@@ -1,5 +1,28 @@
 # IL VILLAGGIO — Handoff complet du projet
 
+---
+
+## 🤝 Règles de collaboration Claude ↔ Fred
+
+### Vocabulaire personnalisé (commandes raccourcies)
+
+| Ce que Fred dit | Ce que Claude fait |
+|---|---|
+| **"bonjour"** | `git pull` + `git log -5 --oneline` + résumé en 2-3 lignes de ce qui a été fait récemment |
+| **"on a fini"** | Analyse les modifs de la session → choisit un message de commit clair → `git add .` + `git commit` + `git push` → confirme "C'est envoyé sur GitHub ✅" |
+| **"sauvegarde et balance"** | `git add .` + `git commit` + `git push` (en cours de session, sans attendre la fin) |
+| **"mets-toi à jour"** | `git pull` |
+
+### Règle d'or
+> Ne jamais laisser Fred quitter une session sans push. Si la conversation semble se terminer, demander : **"tu veux que je fasse 'on a fini' avant de quitter ?"**
+
+### Communication
+- Toujours en **français**
+- **Pas de jargon technique** — Fred est non-développeur
+- Expliquer les changements en langage simple
+
+---
+
 ## Vue d'ensemble
 Application de commande en ligne pour une pizzeria. Deux interfaces séparées :
 - **Client** : `appli-pizzeria.web.app` → `client.html`

@@ -1,0 +1,59 @@
+{
+  "hosting": [
+    {
+      "target": "client",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "database.rules.json",
+        ".gitignore",
+        ".claude/**",
+        "node_modules/**",
+        "functions/**",
+        "print-server/**",
+        "claude-agent/**",
+        "caisse.html",
+        "caisse-icon-192x192.png",
+        "caisse-icon-512x512.png",
+        "caisse-icon-512x512-maskable.png",
+        "manifest-caisse.json",
+        "sw-caisse.js"
+      ]
+    },
+    {
+      "target": "caisse",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "database.rules.json",
+        ".gitignore",
+        ".claude/**",
+        "node_modules/**",
+        "functions/**",
+        "print-server/**",
+        "claude-agent/**",
+        "client.html",
+        "client-icon-192x192.png",
+        "client-icon-512x512.png",
+        "client-icon-512x512-maskable.png",
+        "manifest-client.json",
+        "sw.js"
+      ],
+      "rewrites": [
+        {
+          "source": "/api/claudeChat",
+          "function": {
+            "functionId": "claudeChat",
+            "region": "europe-west1"
+          }
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "source": "functions"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  }
+}

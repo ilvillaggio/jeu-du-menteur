@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "appli-pizzeria"
+  },
+  "targets": {
+    "appli-pizzeria": {
+      "hosting": {
+        "client": ["appli-pizzeria"],
+        "caisse": ["ilvillaggio-caisse"]
+      }
+    }
+  }
+}

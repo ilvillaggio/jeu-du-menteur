@@ -1,0 +1,39 @@
+﻿# Dépendances
+functions/node_modules/
+print-server/node_modules/
+
+# Clés SSL privées
+print-server/cert.pem
+print-server/key.pem
+
+# Firebase local
+.firebase/
+
+# Fichiers de démo / tests
+anim-demo.html
+coin-3d.html
+flag-test.html
+icon-gold-3d.png
+icon-pirate-coin.png
+icon-shiny-coin.png
+logo-clean-temp.png
+logo-floodfill.png
+
+# Doublons icônes (versions sans préfixe)
+icon-192x192.png
+icon-512x512.png
+icon-512x512-maskable.png
+manifest.json
+
+# Projets séparés
+jeu-du-menteur/
+claude-agent/
+Reconstruction/
+
+# Claude Code
+.claude/
+
+# Divers
+print-server/start-printer.bat
+print-server/package-lock.json
+*.bat

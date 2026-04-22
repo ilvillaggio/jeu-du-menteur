@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply h-full;
+    overscroll-behavior: none;
+  }
+  body, #root {
+    @apply h-full bg-noir text-white font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+  /* Prevent iOS zoom on input focus — must be >= 16px */
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
+@layer components {
+  .btn {
+    /* min 48px height = Apple HIG / Material touch target */
+    @apply inline-flex items-center justify-center px-4 rounded-lg font-semibold
+           transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed
+           min-h-[48px] touch-manipulation select-none;
+  }
+  .btn-gold {
+    @apply btn bg-gold text-noir active:scale-95 active:brightness-90;
+  }
+  .btn-ghost {
+    @apply btn border border-border text-subtle active:scale-95;
+  }
+  .btn-danger {
+    @apply btn bg-crimson text-white active:scale-95;
+  }
+  .card {
+    @apply bg-card rounded-2xl border border-border p-4;
+  }
+  .input {
+    @apply w-full bg-surface border border-border rounded-xl px-4 py-3 text-white
+           placeholder:text-muted focus:outline-none focus:border-gold transition-colors;
+    /* 16px prevents iOS auto-zoom */
+    font-size: 16px;
+  }
+  /* Safe area padding for iPhone notch / home bar */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Scrollbar (desktop only) */
+@media (hover: hover) {
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+}

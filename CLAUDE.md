@@ -1,4 +1,4 @@
-﻿# Règles permanentes — Il Villaggio
+# Règles permanentes — Il Villaggio
 
 ## Vocabulaire raccourci
 

@@ -1,0 +1,130 @@
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { useGame } from '../context/GameContext'
+import { useSocket } from '../context/SocketContext'
+import IdentityCard from '../components/IdentityCard'
+import MissionsDrawer from '../components/MissionsDrawer'
+
+export default function TeamSelectionPage() {
+  const { players, playerId, round, teamVotesCount, totalPlayers } = useGame()
+  const { socket } = useSocket()
+
+  const [selected, setSelected] = useState([])
+  const [submitted, setSubmitted] = useState(false)
+  const [missionsOpen, setMissionsOpen] = useState(false)
+
+  const others = players.filter((p) => p.id !== playerId)
+
+  function toggle(id) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 2 ? [...prev, id] : prev
+    )
+  }
+
+  function submit() {
+    if (selected.length !== 2 || submitted) return
+    socket.emit('player:team_choice', selected, () => setSubmitted(true))
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col px-4 pt-5 pb-6 safe-bottom max-w-lg mx-auto w-full">
+      {/* Identity */}
+      <IdentityCard />
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <p className="text-muted text-xs uppercase tracking-widest">Manche {round} · Étape 1/2</p>
+          <h2 className="text-2xl font-bold text-white leading-tight">Choisis ton équipe</h2>
+          <p className="text-muted text-xs mt-1">Pacte mutuel = les 2 t'ont aussi choisi</p>
+        </div>
+        <button
+          onClick={() => setMissionsOpen(true)}
+          className="w-12 h-12 flex items-center justify-center text-2xl opacity-40 active:opacity-100 touch-manipulation rounded-xl"
+        >📜</button>
+      </div>
+
+      {submitted ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          className="flex-1 flex flex-col items-center justify-center gap-5"
+        >
+          <span className="text-5xl">⏳</span>
+          <p className="text-white font-bold text-xl">Équipe soumise</p>
+          <div className="card w-full">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-muted">Équipes reçues</span>
+              <span className="font-bold text-white">{teamVotesCount} / {totalPlayers}</span>
+            </div>
+            <div className="h-2 bg-surface rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gold rounded-full"
+                animate={{ width: `${totalPlayers > 0 ? (teamVotesCount / totalPlayers) * 100 : 0}%` }}
+                transition={{ duration: 0.4 }}
+              />
+            </div>
+            {/* Avatars */}
+            <div className="flex flex-wrap gap-3 justify-center mt-4">
+              {players.map((p) => (
+                <div key={p.id} className={`flex flex-col items-center gap-1 transition-opacity ${p.teamSubmitted ? 'opacity-100' : 'opacity-25'}`}>
+                  <span className="text-2xl">{p.avatar || '🎭'}</span>
+                  <span className="text-xs text-muted">{p.name}</span>
+                  {p.teamSubmitted && <span className="text-teal-light text-xs">✓</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      ) : (
+        <div className="flex flex-col gap-4 flex-1">
+          <p className="text-xs text-muted uppercase tracking-widest">
+            Sélectionne 2 partenaires{' '}
+            <span className="text-white font-bold">({selected.length}/2)</span>
+          </p>
+
+          <div className="flex flex-col gap-2">
+            {others.map((p, i) => (
+              <motion.button
+                key={p.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => toggle(p.id)}
+                className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors min-h-[68px] ${
+                  selected.includes(p.id)
+                    ? 'border-gold bg-gold/10 text-white'
+                    : 'border-border bg-surface text-muted'
+                }`}
+              >
+                <span className="text-3xl leading-none">{p.avatar || '🎭'}</span>
+                <span className="font-bold text-base flex-1 text-left">{p.name}</span>
+                {selected.includes(p.id) && (
+                  <span className="text-gold text-xl">✓</span>
+                )}
+              </motion.button>
+            ))}
+          </div>
+
+          <div className="mt-auto pt-2">
+            <button
+              onClick={submit}
+              disabled={selected.length !== 2}
+              className="btn-gold w-full min-h-[56px] rounded-2xl text-base font-bold disabled:opacity-30"
+            >
+              Valider mon équipe
+            </button>
+            {selected.length < 2 && (
+              <p className="text-center text-muted text-xs mt-2">
+                Choisis encore {2 - selected.length} partenaire{2 - selected.length > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <MissionsDrawer open={missionsOpen} onClose={() => setMissionsOpen(false)} />
+    </div>
+  )
+}

@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../context/GameContext'
+import Avatar from '../components/Avatar'
 
 export default function FinalPage() {
   const { players } = useGame()
   const [revealIndex, setRevealIndex] = useState(-1)
 
-  const sorted = [...players].sort((a, b) => a.score - b.score) // du pire au meilleur
+  // Classement final : score public + missionScore (bonus des missions secrètes révélées ici)
+  const withFinal = players.map((p) => ({
+    ...p,
+    finalScore: p.finalScore ?? (p.score + (p.missionScore ?? 0)),
+  }))
+  const sorted = [...withFinal].sort((a, b) => a.finalScore - b.finalScore) // du pire au meilleur
 
   useEffect(() => {
     if (revealIndex >= sorted.length - 1) return
@@ -47,8 +53,8 @@ export default function FinalPage() {
                       : 'border-border bg-card'
                   }`}
                 >
-                  <div className="text-3xl relative">
-                    {p.avatar || '🎭'}
+                  <div className="relative shrink-0">
+                    <Avatar src={p.avatar} className="w-12 h-12 text-3xl" />
                     {isEliminated && !isLast && (
                       <span className="absolute -top-1 -right-1 text-sm">💀</span>
                     )}
@@ -61,7 +67,12 @@ export default function FinalPage() {
                     {p.role && <p className="text-muted text-xs">{p.role}</p>}
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-lg text-white">{p.score} pts</p>
+                    <p className="font-bold text-lg text-white">{p.finalScore} pts</p>
+                    {(p.missionScore ?? 0) > 0 && (
+                      <p className="text-crimson-light/70 text-[10px] leading-tight">
+                        dont +{p.missionScore} missions
+                      </p>
+                    )}
                     <p className="text-muted text-xs">
                       #{sorted.length - i}
                     </p>
@@ -81,7 +92,7 @@ export default function FinalPage() {
           >
             <p className="text-5xl mb-2">🏆</p>
             <p className="text-2xl font-bold text-gold-light">{winner.name} gagne !</p>
-            <p className="text-muted text-sm mt-1">avec {winner.score} points</p>
+            <p className="text-muted text-sm mt-1">avec {winner.finalScore} points</p>
           </motion.div>
         )}
       </div>

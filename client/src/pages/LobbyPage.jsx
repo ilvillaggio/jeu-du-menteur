@@ -32,6 +32,15 @@ export default function LobbyPage() {
     })
   }
 
+  function handleCreateTest() {
+    if (!name.trim()) return setError('Entre ton prénom')
+    setPlayer(socket.id, name.trim())
+    socket.emit('room:create_test', { name: name.trim(), playerCount }, (res) => {
+      if (res.error) return setError(res.error)
+      updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode, totalPlayers: res.totalPlayers })
+    })
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6">
       <motion.div
@@ -120,6 +129,15 @@ export default function LobbyPage() {
           >
             {mode === 'create' ? 'Créer la partie' : 'Rejoindre'}
           </button>
+
+          {mode === 'create' && (
+            <button
+              onClick={handleCreateTest}
+              className="w-full py-2 text-sm text-muted hover:text-subtle border border-border rounded-lg transition-all"
+            >
+              🧪 Mode test solo (avec bots)
+            </button>
+          )}
         </div>
       </motion.div>
     </div>

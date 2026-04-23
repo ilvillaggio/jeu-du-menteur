@@ -13,6 +13,8 @@ const initialState = {
   round: 0,
   players: [],          // [{ id, name, avatar, role, score, ready, voted }]
   myMissions: [],       // [{ id, description, difficulty, completed }]
+  myMissionScore: 0,    // Points bonus des missions (privé, visible uniquement par le joueur)
+  myHistory: [],        // [{ round, action, mise, delta, chosen[], validPartners[] }] — parcours perso
   myChoice: null,       // { action, partners, mise }
   roundResults: null,
   scores: [],
@@ -24,6 +26,9 @@ const initialState = {
   teamReveal: null,       // { pacts: [{id,name,avatar,valid}], isActive }
   myValidPartners: [],    // IDs des partenaires mutuels
   isActive: true,         // false = hors-jeu ce tour
+
+  // Messages privés
+  whispers: [],           // [{ id, from, fromName, to, toName, text, at, read? }]
 }
 
 function reducer(state, action) {
@@ -38,6 +43,15 @@ function reducer(state, action) {
       return { ...state, ...action.payload }
     case 'SET_MY_CHOICE':
       return { ...state, myChoice: action.choice }
+    case 'ADD_WHISPER':
+      return { ...state, whispers: [...state.whispers, action.whisper] }
+    case 'MARK_WHISPERS_READ':
+      return {
+        ...state,
+        whispers: state.whispers.map((w) =>
+          w.from === action.otherId || w.to === action.otherId ? { ...w, read: true } : w
+        ),
+      }
     case 'RESET':
       return { ...initialState }
     default:
@@ -52,10 +66,12 @@ export function GameProvider({ children }) {
   const setRoom = useCallback((code) => dispatch({ type: 'SET_ROOM', code }), [])
   const updateGame = useCallback((payload) => dispatch({ type: 'UPDATE_GAME', payload }), [])
   const setMyChoice = useCallback((choice) => dispatch({ type: 'SET_MY_CHOICE', choice }), [])
+  const addWhisper = useCallback((whisper) => dispatch({ type: 'ADD_WHISPER', whisper }), [])
+  const markWhispersRead = useCallback((otherId) => dispatch({ type: 'MARK_WHISPERS_READ', otherId }), [])
   const reset = useCallback(() => dispatch({ type: 'RESET' }), [])
 
   return (
-    <GameContext.Provider value={{ ...state, setPlayer, setRoom, updateGame, setMyChoice, reset }}>
+    <GameContext.Provider value={{ ...state, setPlayer, setRoom, updateGame, setMyChoice, addWhisper, markWhispersRead, reset }}>
       {children}
     </GameContext.Provider>
   )

@@ -4,6 +4,7 @@ import { SocketProvider } from './context/SocketContext'
 import { GameProvider, useGame } from './context/GameContext'
 import LobbyPage from './pages/LobbyPage'
 import WaitingRoomPage from './pages/WaitingRoomPage'
+import MissionRevealPage from './pages/MissionRevealPage'
 import TeamSelectionPage from './pages/TeamSelectionPage'
 import TeamRevealPage from './pages/TeamRevealPage'
 import ChoicePage from './pages/ChoicePage'
@@ -12,6 +13,7 @@ import ResultsPage from './pages/ResultsPage'
 import IntermissionPage from './pages/IntermissionPage'
 import FinalPage from './pages/FinalPage'
 import GameSocketBridge from './components/GameSocketBridge'
+import MissionCelebration from './components/MissionCelebration'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -25,6 +27,7 @@ function PhaseRouter() {
   const pages = {
     lobby:          <LobbyPage />,
     waiting:        <WaitingRoomPage />,
+    mission_reveal: <MissionRevealPage />,
     team_selection: <TeamSelectionPage />,
     team_reveal:    <TeamRevealPage />,
     choice:         <ChoicePage />,
@@ -37,6 +40,7 @@ function PhaseRouter() {
   return (
     <>
       <GameSocketBridge />
+      <MissionCelebration />
       <AnimatePresence mode="wait">
         <motion.div
           key={phase}

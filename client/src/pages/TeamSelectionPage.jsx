@@ -4,16 +4,23 @@ import { useGame } from '../context/GameContext'
 import { useSocket } from '../context/SocketContext'
 import IdentityCard from '../components/IdentityCard'
 import MissionsDrawer from '../components/MissionsDrawer'
+import WhispersDrawer from '../components/WhispersDrawer'
+import MessagesIconButton from '../components/MessagesIconButton'
+import ScoreboardDrawer from '../components/ScoreboardDrawer'
+import Avatar from '../components/Avatar'
 
 export default function TeamSelectionPage() {
-  const { players, playerId, round, teamVotesCount, totalPlayers } = useGame()
+  const { players, playerId, round, teamVotesCount, totalPlayers, myMissions } = useGame()
   const { socket } = useSocket()
 
   const [selected, setSelected] = useState([])
   const [submitted, setSubmitted] = useState(false)
   const [missionsOpen, setMissionsOpen] = useState(false)
+  const [whispersOpen, setWhispersOpen] = useState(false)
+  const [scoreboardOpen, setScoreboardOpen] = useState(false)
 
   const others = players.filter((p) => p.id !== playerId)
+  const completedMissions = myMissions.filter((m) => m.completed).length
 
   function toggle(id) {
     setSelected((prev) =>
@@ -38,10 +45,27 @@ export default function TeamSelectionPage() {
           <h2 className="text-2xl font-bold text-white leading-tight">Choisis ton équipe</h2>
           <p className="text-muted text-xs mt-1">Pacte mutuel = les 2 t'ont aussi choisi</p>
         </div>
-        <button
-          onClick={() => setMissionsOpen(true)}
-          className="w-12 h-12 flex items-center justify-center text-2xl opacity-40 active:opacity-100 touch-manipulation rounded-xl"
-        >📜</button>
+        <div className="flex items-center gap-1">
+          <MessagesIconButton onClick={() => setWhispersOpen(true)} />
+          <button
+            onClick={() => setScoreboardOpen(true)}
+            aria-label="Classement"
+            className="w-12 h-12 flex items-center justify-center text-2xl opacity-40 active:opacity-100 touch-manipulation rounded-xl"
+          >🏆</button>
+          <button
+            onClick={() => setMissionsOpen(true)}
+            className={`relative w-12 h-12 flex items-center justify-center text-2xl touch-manipulation rounded-xl transition-opacity ${
+              completedMissions > 0 ? 'opacity-100' : 'opacity-40 active:opacity-100'
+            }`}
+          >
+            📜
+            {completedMissions > 0 && (
+              <span className="absolute -top-1 -right-1 bg-teal text-noir text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center border border-card">
+                {completedMissions}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {submitted ? (
@@ -69,7 +93,7 @@ export default function TeamSelectionPage() {
             <div className="flex flex-wrap gap-3 justify-center mt-4">
               {players.map((p) => (
                 <div key={p.id} className={`flex flex-col items-center gap-1 transition-opacity ${p.teamSubmitted ? 'opacity-100' : 'opacity-25'}`}>
-                  <span className="text-2xl">{p.avatar || '🎭'}</span>
+                  <Avatar src={p.avatar} className="w-9 h-9 text-2xl" />
                   <span className="text-xs text-muted">{p.name}</span>
                   {p.teamSubmitted && <span className="text-teal-light text-xs">✓</span>}
                 </div>
@@ -78,53 +102,59 @@ export default function TeamSelectionPage() {
           </div>
         </motion.div>
       ) : (
-        <div className="flex flex-col gap-4 flex-1">
-          <p className="text-xs text-muted uppercase tracking-widest">
-            Sélectionne 2 partenaires{' '}
-            <span className="text-white font-bold">({selected.length}/2)</span>
-          </p>
+        <>
+          <div className="flex flex-col gap-4 flex-1 pb-28">
+            <p className="text-xs text-muted uppercase tracking-widest">
+              Sélectionne 2 partenaires{' '}
+              <span className="text-white font-bold">({selected.length}/2)</span>
+            </p>
 
-          <div className="flex flex-col gap-2">
-            {others.map((p, i) => (
-              <motion.button
-                key={p.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => toggle(p.id)}
-                className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors min-h-[68px] ${
-                  selected.includes(p.id)
-                    ? 'border-gold bg-gold/10 text-white'
-                    : 'border-border bg-surface text-muted'
-                }`}
+            <div className="flex flex-col gap-2">
+              {others.map((p, i) => (
+                <motion.button
+                  key={p.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => toggle(p.id)}
+                  className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors min-h-[68px] ${
+                    selected.includes(p.id)
+                      ? 'border-gold bg-gold/10 text-white'
+                      : 'border-border bg-surface text-muted'
+                  }`}
+                >
+                  <Avatar src={p.avatar} className="w-12 h-12 text-3xl" />
+                  <span className="font-bold text-base flex-1 text-left">{p.name}</span>
+                  {selected.includes(p.id) && (
+                    <span className="text-gold text-xl">✓</span>
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          <div className="fixed bottom-0 inset-x-0 px-4 pt-6 pb-4 safe-bottom bg-gradient-to-t from-noir via-noir to-noir/0 pointer-events-none z-30">
+            <div className="max-w-lg mx-auto pointer-events-auto">
+              <button
+                onClick={submit}
+                disabled={selected.length !== 2}
+                className="btn-gold w-full min-h-[56px] rounded-2xl text-base font-bold disabled:opacity-30"
               >
-                <span className="text-3xl leading-none">{p.avatar || '🎭'}</span>
-                <span className="font-bold text-base flex-1 text-left">{p.name}</span>
-                {selected.includes(p.id) && (
-                  <span className="text-gold text-xl">✓</span>
-                )}
-              </motion.button>
-            ))}
+                Valider mon équipe
+              </button>
+              {selected.length < 2 && (
+                <p className="text-center text-muted text-xs mt-2">
+                  Choisis encore {2 - selected.length} partenaire{2 - selected.length > 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
           </div>
-
-          <div className="mt-auto pt-2">
-            <button
-              onClick={submit}
-              disabled={selected.length !== 2}
-              className="btn-gold w-full min-h-[56px] rounded-2xl text-base font-bold disabled:opacity-30"
-            >
-              Valider mon équipe
-            </button>
-            {selected.length < 2 && (
-              <p className="text-center text-muted text-xs mt-2">
-                Choisis encore {2 - selected.length} partenaire{2 - selected.length > 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       <MissionsDrawer open={missionsOpen} onClose={() => setMissionsOpen(false)} />
+      <WhispersDrawer open={whispersOpen} onClose={() => setWhispersOpen(false)} />
+      <ScoreboardDrawer open={scoreboardOpen} onClose={() => setScoreboardOpen(false)} />
     </div>
   )
 }

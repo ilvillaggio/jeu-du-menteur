@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useGame } from '../context/GameContext'
+import Avatar from '../components/Avatar'
 
 export default function VotingPage() {
   const { votesCount, totalPlayers, players, round } = useGame()
@@ -41,11 +42,19 @@ export default function VotingPage() {
             {players.map((p) => (
               <motion.div
                 key={p.id}
-                animate={{ opacity: p.voted ? 1 : 0.3, scale: p.voted ? 1 : 0.85 }}
-                transition={{ duration: 0.2 }}
+                animate={
+                  p.voted
+                    ? { opacity: 1, scale: 1, x: 0, rotate: 0 }
+                    : { opacity: 0.5, scale: 0.9, x: [0, -1.5, 1.5, -1, 1, 0], rotate: [0, -1, 1, -0.5, 0.5, 0] }
+                }
+                transition={
+                  p.voted
+                    ? { duration: 0.2 }
+                    : { duration: 0.4, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' }
+                }
                 className="flex flex-col items-center gap-1 w-14"
               >
-                <span className="text-3xl leading-none">{p.avatar || '🎭'}</span>
+                <Avatar src={p.avatar} animated={p.voted} className="w-12 h-12 text-3xl" />
                 <span className="text-xs text-muted truncate w-full text-center">{p.name}</span>
                 <span className={`text-xs font-bold ${p.voted ? 'text-teal-light' : 'text-transparent'}`}>✓</span>
               </motion.div>

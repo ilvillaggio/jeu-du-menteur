@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useGame } from '../context/GameContext'
 import MissionsDrawer from '../components/MissionsDrawer'
+import WhispersDrawer from '../components/WhispersDrawer'
+import Avatar from '../components/Avatar'
 
 function useCountdown(endsAt) {
   const [remaining, setRemaining] = useState(0)
@@ -22,11 +24,13 @@ function fmt(s) {
 }
 
 export default function IntermissionPage() {
-  const { intermissionEndsAt, scores, players, playerId, round } = useGame()
+  const { intermissionEndsAt, players, playerId, round, whispers } = useGame()
   const remaining = useCountdown(intermissionEndsAt)
   const [missionsOpen, setMissionsOpen] = useState(false)
+  const [whispersOpen, setWhispersOpen] = useState(false)
 
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
+  const unreadTotal = whispers.filter((w) => w.to === playerId && !w.read).length
 
   return (
     <div className="min-h-screen flex flex-col p-6 max-w-lg mx-auto">
@@ -53,7 +57,7 @@ export default function IntermissionPage() {
                 <div className="flex justify-between text-sm mb-1">
                   <div className="flex items-center gap-2">
                     <span className="text-muted w-5">#{i + 1}</span>
-                    <span className="text-xl">{p.avatar || '🎭'}</span>
+                    <Avatar src={p.avatar} className="w-6 h-6 text-xl" />
                     <span className={p.id === playerId ? 'font-bold text-gold-light' : 'text-white'}>
                       {p.name}
                     </span>
@@ -74,22 +78,35 @@ export default function IntermissionPage() {
         </div>
       </div>
 
-      {/* Discrete message prompt */}
-      <div className="card bg-surface/50 border-dashed">
-        <p className="text-muted text-sm text-center">
-          💬 Profite de cette pause pour négocier discrètement…
-        </p>
-      </div>
+      {/* Bouton messagerie */}
+      <button
+        onClick={() => setWhispersOpen(true)}
+        className="relative w-full card bg-surface/60 border-dashed active:bg-white/5 touch-manipulation mb-3"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-3xl shrink-0">💬</span>
+          <div className="flex-1 text-left">
+            <p className="text-white font-semibold text-sm">Négocier en privé</p>
+            <p className="text-muted text-xs mt-0.5">Envoie un message discret aux autres joueurs</p>
+          </div>
+          {unreadTotal > 0 && (
+            <span className="shrink-0 bg-crimson text-white text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 flex items-center justify-center">
+              {unreadTotal}
+            </span>
+          )}
+        </div>
+      </button>
 
       {/* Mission button */}
       <button
         onClick={() => setMissionsOpen(true)}
-        className="mt-4 text-center text-muted text-xs hover:text-subtle transition-colors"
+        className="mt-1 text-center text-muted text-xs hover:text-subtle transition-colors"
       >
         📜 Mes missions secrètes
       </button>
 
       <MissionsDrawer open={missionsOpen} onClose={() => setMissionsOpen(false)} />
+      <WhispersDrawer open={whispersOpen} onClose={() => setWhispersOpen(false)} />
     </div>
   )
 }

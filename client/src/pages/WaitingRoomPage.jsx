@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { useSocket } from '../context/SocketContext'
 import { motion, AnimatePresence } from 'framer-motion'
+import Avatar from '../components/Avatar'
+import AvatarPicker from '../components/AvatarPicker'
 
 const COUNTS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
@@ -11,6 +13,7 @@ export default function WaitingRoomPage() {
 
   const [editingCount, setEditingCount] = useState(false)
   const [startError, setStartError] = useState('')
+  const [avatarOpen, setAvatarOpen] = useState(false)
 
   const me = players.find((p) => p.id === playerId)
   const isHost = players[0]?.id === playerId
@@ -107,7 +110,7 @@ export default function WaitingRoomPage() {
               className="flex items-center justify-between py-3 px-3 rounded-xl bg-surface min-h-[52px]"
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl leading-none">{p.avatar || '🎭'}</span>
+                <Avatar src={p.avatar} className="w-10 h-10 text-2xl" />
                 <span className="font-semibold">{p.name}</span>
                 {p.id === players[0]?.id && (
                   <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">hôte</span>
@@ -121,21 +124,24 @@ export default function WaitingRoomPage() {
         </div>
       </div>
 
+      {/* Bouton de sélection d'avatar */}
+      <button
+        onClick={() => setAvatarOpen(true)}
+        className="w-full card active:bg-white/5 touch-manipulation mb-4 flex items-center gap-3"
+      >
+        <Avatar src={me?.avatar} className="w-12 h-12 text-3xl" />
+        <div className="flex-1 text-left">
+          <p className="text-[10px] text-muted uppercase tracking-widest">Ton personnage</p>
+          <p className="text-white font-semibold text-sm">
+            {me?.avatar && me.avatar.startsWith('/') ? 'Change de perso' : 'Choisis ton perso'}
+          </p>
+        </div>
+        <span className="text-muted">→</span>
+      </button>
+
       {/* Actions */}
       <div className="flex flex-col gap-3">
-        {/* Ready toggle */}
-        <button
-          onClick={toggleReady}
-          className={`w-full min-h-[52px] rounded-2xl font-bold text-base touch-manipulation transition-colors ${
-            me?.ready
-              ? 'border-2 border-border text-subtle bg-surface'
-              : 'bg-gold text-noir'
-          }`}
-        >
-          {me?.ready ? 'Annuler' : 'Je suis prêt !'}
-        </button>
-
-        {/* Start — host only when conditions met */}
+        {/* Start — host only when conditions met (placé AU-DESSUS du toggle prêt/annuler) */}
         <AnimatePresence>
           {canStart && (
             <motion.button
@@ -149,6 +155,18 @@ export default function WaitingRoomPage() {
             </motion.button>
           )}
         </AnimatePresence>
+
+        {/* Ready toggle */}
+        <button
+          onClick={toggleReady}
+          className={`w-full min-h-[52px] rounded-2xl font-bold text-base touch-manipulation transition-colors ${
+            me?.ready
+              ? 'border-2 border-border text-subtle bg-surface'
+              : 'bg-gold text-noir'
+          }`}
+        >
+          {me?.ready ? 'Annuler' : 'Je suis prêt !'}
+        </button>
 
         {/* Start hint when not all ready */}
         {isHost && !allReady && players.length >= 2 && (
@@ -169,6 +187,8 @@ export default function WaitingRoomPage() {
           Quitter la salle
         </button>
       </div>
+
+      <AvatarPicker open={avatarOpen} onClose={() => setAvatarOpen(false)} />
     </div>
   )
 }

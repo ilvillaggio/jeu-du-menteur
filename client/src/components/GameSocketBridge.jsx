@@ -5,7 +5,7 @@ import { useGame } from '../context/GameContext'
 // Écoute tous les événements serveur et met à jour le GameContext
 export default function GameSocketBridge() {
   const { socket } = useSocket()
-  const { updateGame, setRoom } = useGame()
+  const { updateGame, setRoom, addWhisper } = useGame()
 
   useEffect(() => {
     if (!socket) return
@@ -36,6 +36,7 @@ export default function GameSocketBridge() {
       updateGame({ ...payload, phase: 'final' })
     )
     socket.on('room:joined', ({ roomCode }) => setRoom(roomCode))
+    socket.on('whisper:received', (whisper) => addWhisper({ ...whisper, read: false }))
 
     return () => {
       socket.off('game:state')
@@ -47,6 +48,7 @@ export default function GameSocketBridge() {
       socket.off('game:intermission')
       socket.off('game:final')
       socket.off('room:joined')
+      socket.off('whisper:received')
     }
   }, [socket])
 

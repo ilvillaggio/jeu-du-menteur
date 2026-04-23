@@ -34,6 +34,26 @@ io.on('connection', (socket) => {
     cb({ roomCode: code, players: room.publicPlayers(), totalPlayers: room.playerCount })
   })
 
+  // ─── Create test room (solo avec bots) ───
+  socket.on('room:create_test', ({ name, playerCount }, cb) => {
+    let code
+    do { code = generateCode() } while (rooms.has(code))
+
+    const room = new GameRoom(code, playerCount, io, true /* testMode */)
+    rooms.set(code, room)
+
+    room.addPlayer(socket, name)
+    socket.join(code)
+    socket.data.roomCode = code
+
+    // Remplit la salle avec des bots pour atteindre playerCount
+    while (room.players.length < playerCount) {
+      room.addBot()
+    }
+
+    cb({ roomCode: code, players: room.publicPlayers(), totalPlayers: room.playerCount })
+  })
+
   // ─── Join room ───
   socket.on('room:join', ({ name, code }, cb) => {
     const room = rooms.get(code)
@@ -55,6 +75,16 @@ io.on('connection', (socket) => {
     if (!room) return
     room.setReady(socket.id, ready)
     io.to(room.code).emit('game:state', room.stateForAll())
+  })
+
+  // ─── Set avatar ───
+  socket.on('player:set_avatar', ({ avatar }, cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+    const res = room.setAvatar(socket.id, avatar)
+    if (res?.error) return cb(res)
+    io.to(room.code).emit('game:state', room.stateForAll())
+    cb({ ok: true })
   })
 
   // ─── Leave room ───
@@ -98,6 +128,22 @@ io.on('connection', (socket) => {
     cb({ ok: true })
   })
 
+  // ─── Mission acknowledged (début de partie) ───
+  socket.on('player:mission_acknowledged', (cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+    room.acknowledgeMission(socket.id)
+    cb({ ok: true })
+  })
+
+  // ─── Results acknowledged (fin de manche, passage à la suite) ───
+  socket.on('player:results_acknowledged', (cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+    room.acknowledgeResults(socket.id)
+    cb({ ok: true })
+  })
+
   // ─── Team choice ───
   socket.on('player:team_choice', (partners, cb = () => {}) => {
     const room = rooms.get(socket.data.roomCode)
@@ -111,6 +157,37 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.data.roomCode)
     if (!room) return
     room.registerChoice(socket.id, choice)
+  })
+
+  // ─── Whisper (message privé entre joueurs) ───
+  socket.on('whisper:send', ({ to, text }, cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+
+    const sender = room.players.find((p) => p.id === socket.id)
+    const recipient = room.players.find((p) => p.id === to)
+    if (!sender) return cb({ error: 'Non autorisé' })
+    if (!recipient) return cb({ error: 'Destinataire introuvable' })
+
+    const trimmed = (text || '').toString().trim().slice(0, 300)
+    if (!trimmed) return cb({ error: 'Message vide' })
+
+    const whisper = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      from: sender.id,
+      fromName: sender.name,
+      to: recipient.id,
+      toName: recipient.name,
+      text: trimmed,
+      at: Date.now(),
+    }
+
+    // Transmission au destinataire (les bots n'ont pas de socket, ignoré)
+    if (!recipient.isBot) {
+      io.to(recipient.id).emit('whisper:received', whisper)
+    }
+
+    cb({ ok: true, whisper })
   })
 
   // ─── Disconnect ───

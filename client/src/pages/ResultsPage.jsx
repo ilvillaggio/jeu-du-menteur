@@ -1,24 +1,36 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useGame } from '../context/GameContext'
+import { useSocket } from '../context/SocketContext'
 import BattleAnimation from '../components/BattleAnimation'
+import Avatar from '../components/Avatar'
 
 export default function ResultsPage() {
-  const { roundResults, players, playerId, round } = useGame()
+  const { roundResults, players, playerId, round, resultsAckCount = 0 } = useGame()
+  const { socket } = useSocket()
   const [battleDone, setBattleDone] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
+
+  // Reset à chaque nouvelle manche
+  useEffect(() => {
+    setBattleDone(false)
+    setAcknowledged(false)
+  }, [roundResults?.round])
 
   if (!roundResults) return null
-
-  // Show battle animation first
   if (!battleDone) return <BattleAnimation onDone={() => setBattleDone(true)} />
 
-  // Map reveals by playerId for quick delta lookup
   const deltaMap = {}
   if (roundResults.reveals) {
     roundResults.reveals.forEach((r) => { deltaMap[r.playerId] = r.delta })
   }
 
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
+  const totalPlayers = players.length
+
+  function acknowledge() {
+    socket.emit('player:results_acknowledged', () => setAcknowledged(true))
+  }
 
   return (
     <div className="min-h-screen flex flex-col px-4 pt-5 pb-6 safe-bottom max-w-lg mx-auto w-full">
@@ -29,8 +41,8 @@ export default function ResultsPage() {
         <p className="text-muted text-sm mt-1">À vous de deviner ce que chacun a fait…</p>
       </div>
 
-      {/* Scoreboard with delta — no action revealed */}
-      <div className="card">
+      {/* Scoreboard avec delta — pas d'action révélée */}
+      <div className="card flex-1 pb-28">
         <h3 className="text-xs text-muted uppercase tracking-widest mb-3">Classement</h3>
         <div className="flex flex-col gap-2">
           {sortedPlayers.map((p, i) => {
@@ -46,7 +58,7 @@ export default function ResultsPage() {
                 }`}
               >
                 <span className="text-muted text-sm font-mono w-6 text-center shrink-0">#{i + 1}</span>
-                <span className="text-2xl leading-none shrink-0">{p.avatar || '🎭'}</span>
+                <Avatar src={p.avatar} className="w-8 h-8 text-2xl" />
                 <span className="font-semibold flex-1 truncate">{p.name}</span>
                 {delta !== 0 && (
                   <span className={`text-sm font-semibold shrink-0 ${delta > 0 ? 'text-teal-light' : 'text-crimson-light'}`}>
@@ -60,9 +72,30 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      <p className="text-center text-muted text-sm mt-6">
-        Prochaine manche dans un instant…
-      </p>
+      {/* Bouton Continuer — sticky en bas */}
+      <div className="fixed bottom-0 inset-x-0 px-4 pt-6 pb-4 safe-bottom bg-gradient-to-t from-noir via-noir to-noir/0 pointer-events-none z-30">
+        <div className="max-w-lg mx-auto pointer-events-auto">
+          {acknowledged ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center card"
+            >
+              <p className="text-teal-light font-bold">✓ Prêt</p>
+              <p className="text-muted text-sm mt-1">
+                En attente des autres… {resultsAckCount}/{totalPlayers}
+              </p>
+            </motion.div>
+          ) : (
+            <button
+              onClick={acknowledge}
+              className="btn-gold w-full min-h-[56px] rounded-2xl text-base font-bold"
+            >
+              Continuer →
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

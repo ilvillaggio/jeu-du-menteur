@@ -1,14 +1,37 @@
 const MISSIONS = require('./missions')
 
 const INTERMISSION_MS = 30 * 60 * 1000 // 30 min
+const TEST_INTERMISSION_MS = 5000 // 5s en mode test
 const TOTAL_ROUNDS = 5
 const TEAM_REVEAL_DELAY_MS = 8000 // 8s pour lire les pactes avant action
+const BOT_NAMES = ['Alice', 'Bob', 'Claire', 'David', 'Emma', 'Franck', 'Greg', 'Hugo', 'Inès', 'Julie']
+
+// 16 avatars Sprunki sélectionnés par Fred — distribués au hasard à chaque joueur
+const AVATAR_POOL = [
+  '/avatars/selected/CS_02_Red_Raddy.svg',
+  '/avatars/selected/CS_14_Yellow_Simon.svg',
+  '/avatars/selected/CS_15_Tan_Tunner.svg',
+  '/avatars/selected/CS_17_White_Wenda.svg',
+  '/avatars/selected/CS_18_Pink_Pinki.svg',
+  '/avatars/selected/CS_20_Black_Black.svg',
+  '/avatars/selected/CS_21_Pepper_Jalapenio_Cone_Zombie.svg',
+  '/avatars/selected/P3_01_Orange_Oren.svg',
+  '/avatars/selected/P3_02_Red_Raddy.svg',
+  '/avatars/selected/P3_03_Silver_Clukr.svg',
+  '/avatars/selected/P3_06_Gray_Gray.svg',
+  '/avatars/selected/P3_09_Lime_OWAKCX.svg',
+  '/avatars/selected/P3_10_Sky_blue_Sky.svg',
+  '/avatars/selected/P3_15_Tan_Tunner.svg',
+  '/avatars/selected/P3_17_White_Wenda.svg',
+  '/avatars/selected/P3_18_Pink_Pinki.svg',
+]
 
 class GameRoom {
-  constructor(code, playerCount, io) {
+  constructor(code, playerCount, io, testMode = false) {
     this.code = code
     this.playerCount = playerCount
     this.io = io
+    this.testMode = testMode
     this.players = []
     this.phase = 'waiting'
     this.round = 0
@@ -21,13 +44,34 @@ class GameRoom {
 
   // ─── Players ───
 
+  // Tire un avatar aléatoire parmi les non-pris. Fallback emoji si tous pris.
+  _pickRandomAvatar(fallback = '🎭') {
+    const taken = new Set(this.players.map((p) => p.avatar).filter(Boolean))
+    const available = AVATAR_POOL.filter((a) => !taken.has(a))
+    if (available.length === 0) return fallback
+    return available[Math.floor(Math.random() * available.length)]
+  }
+
   addPlayer(socket, name) {
     this.players.push({
-      id: socket.id, name, avatar: '🎭', role: null,
-      score: 0, ready: false, voted: false,
-      teamSubmitted: false, missions: [],
+      id: socket.id, name, avatar: this._pickRandomAvatar('🎭'), role: null,
+      score: 0, missionScore: 0, ready: false, voted: false,
+      teamSubmitted: false, missionAcknowledged: false, missions: [],
+      isBot: false,
     })
     socket.data.playerId = socket.id
+  }
+
+  addBot(name) {
+    const usedNames = new Set(this.players.map((p) => p.name))
+    const availableName = name || BOT_NAMES.find((n) => !usedNames.has(n)) || `Bot${this.players.length}`
+    this.players.push({
+      id: `bot_${Math.random().toString(36).slice(2, 10)}`,
+      name: availableName, avatar: this._pickRandomAvatar('🤖'), role: null,
+      score: 0, missionScore: 0, ready: true, voted: false,
+      teamSubmitted: false, missionAcknowledged: false, missions: [],
+      isBot: true,
+    })
   }
 
   removePlayer(id) {
@@ -39,6 +83,16 @@ class GameRoom {
     if (p) p.ready = ready
   }
 
+  setAvatar(id, avatar) {
+    const p = this.players.find((p) => p.id === id)
+    if (!p) return { error: 'Joueur introuvable' }
+    // Un avatar déjà pris par un autre joueur → refus (sauf si c'est le sien)
+    const clash = this.players.find((x) => x.id !== id && x.avatar === avatar)
+    if (clash) return { error: 'Avatar déjà pris' }
+    p.avatar = avatar
+    return { ok: true }
+  }
+
   isFull()  { return this.players.length >= this.playerCount }
   isEmpty() { return this.players.length === 0 }
 
@@ -47,7 +101,40 @@ class GameRoom {
   startGame() {
     this._assignMissions()
     this.round = 0
-    this._startRound()
+    this._startMissionReveal()
+  }
+
+  // Phase 0 : révélation des missions au début de partie (chacun lit les siennes)
+  _startMissionReveal() {
+    this.phase = 'mission_reveal'
+    this.players.forEach((p) => { p.missionAcknowledged = false })
+
+    this.players.forEach((p) => {
+      this.io.to(p.id).emit('game:state', {
+        ...this._stateFor(p),
+        phase: 'mission_reveal',
+        missionAckCount: 0,
+      })
+    })
+
+    this._triggerBots()
+  }
+
+  acknowledgeMission(id) {
+    if (this.phase !== 'mission_reveal') return
+    const p = this.players.find((x) => x.id === id)
+    if (!p || p.missionAcknowledged) return
+    p.missionAcknowledged = true
+
+    const ackCount = this.players.filter((x) => x.missionAcknowledged).length
+    this.io.to(this.code).emit('game:state', {
+      missionAckCount: ackCount,
+      totalPlayers: this.players.length,
+    })
+
+    if (ackCount >= this.players.length) {
+      setTimeout(() => this._startRound(), 600)
+    }
   }
 
   // Phase 1 : sélection d'équipe
@@ -63,6 +150,8 @@ class GameRoom {
     this.players.forEach((p) => {
       this.io.to(p.id).emit('game:state', this._stateFor(p))
     })
+
+    this._triggerBots()
   }
 
   // Phase 1 → collecte les choix d'équipe
@@ -100,6 +189,11 @@ class GameRoom {
 
     this.phase = 'team_reveal'
 
+    // Liste publique des joueurs qui se sont fait avoir (aucun pacte mutuel)
+    const trickedPlayers = this.players
+      .filter((p) => (this.validTeams.get(p.id) || []).length === 0)
+      .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar }))
+
     // Envoie à chaque joueur son résultat personnalisé
     this.players.forEach((p) => {
       const chosen = this.teamChoices.get(p.id) || []
@@ -111,7 +205,7 @@ class GameRoom {
         return { id: pid, name: partner?.name || '?', avatar: partner?.avatar || '🎭', valid: mutual.includes(pid) }
       })
 
-      this.io.to(p.id).emit('game:team_reveal', { pacts, isActive, round: this.round })
+      this.io.to(p.id).emit('game:team_reveal', { pacts, isActive, round: this.round, trickedPlayers })
     })
 
     // Si personne n'a d'équipe valide → round nul, on passe
@@ -135,6 +229,8 @@ class GameRoom {
         isActive: validPartners.length > 0,
       })
     })
+
+    this._triggerBots()
   }
 
   // Phase 3 → collecte les actions (uniquement actifs)
@@ -179,7 +275,11 @@ class GameRoom {
         reveals.push({ playerId: p.id, name: p.name, avatar: p.avatar, action: null, delta: 0, inactive: true })
         // Still record an empty entry so consecutive-checks don't carry across gaps
         const hist = this.playerHistory.get(p.id) || []
-        hist.push({ round: this.round, action: null, mise: 0, partners: [], delta: 0 })
+        hist.push({
+          round: this.round, action: null, mise: 0,
+          partners: [], chosenIds: this.teamChoices.get(p.id) || [],
+          delta: 0,
+        })
         this.playerHistory.set(p.id, hist)
         return
       }
@@ -209,9 +309,13 @@ class GameRoom {
       p.score += delta
       reveals.push({ playerId: p.id, name: p.name, avatar: p.avatar, action: choice.action, delta })
 
-      // Record history for mission checks
+      // Record history for mission checks + parcours personnel
       const hist = this.playerHistory.get(p.id) || []
-      hist.push({ round: this.round, action: choice.action, mise: choice.mise, partners: validPartners, delta })
+      hist.push({
+        round: this.round, action: choice.action, mise: choice.mise,
+        partners: validPartners, chosenIds: this.teamChoices.get(p.id) || [],
+        delta,
+      })
       this.playerHistory.set(p.id, hist)
     })
 
@@ -220,17 +324,45 @@ class GameRoom {
 
     const results = { reveals, round: this.round }
     this.phase = 'results'
+    this.players.forEach((p) => { p.resultsAcknowledged = false })
+
     this.io.to(this.code).emit('game:results', results)
-    this.io.to(this.code).emit('game:state', { players: this.publicPlayers(), phase: 'results' })
-    // Send updated missions to each player
+    this.io.to(this.code).emit('game:state', {
+      players: this.publicPlayers(),
+      phase: 'results',
+      resultsAckCount: 0,
+      totalPlayers: this.players.length,
+    })
+    // Missions + score privé + historique perso à chaque joueur
     this.players.forEach((p) => {
-      this.io.to(p.id).emit('game:state', { myMissions: p.missions })
+      this.io.to(p.id).emit('game:state', {
+        myMissions: p.missions,
+        myMissionScore: p.missionScore,
+        myHistory: this._historyForPlayer(p),
+      })
     })
 
-    if (this.round >= TOTAL_ROUNDS) {
-      setTimeout(() => this._startFinal(), 4000)
-    } else {
-      setTimeout(() => this._startIntermission(), 4000)
+    // Les bots acceptent automatiquement — on attend le clic humain pour continuer
+    this._triggerBots()
+  }
+
+  acknowledgeResults(id) {
+    if (this.phase !== 'results') return
+    const p = this.players.find((x) => x.id === id)
+    if (!p || p.resultsAcknowledged) return
+    p.resultsAcknowledged = true
+
+    const ackCount = this.players.filter((x) => x.resultsAcknowledged).length
+    this.io.to(this.code).emit('game:state', {
+      resultsAckCount: ackCount,
+      totalPlayers: this.players.length,
+    })
+
+    if (ackCount >= this.players.length) {
+      setTimeout(() => {
+        if (this.round >= TOTAL_ROUNDS) this._startFinal()
+        else this._startIntermission()
+      }, 500)
     }
   }
 
@@ -257,8 +389,8 @@ class GameRoom {
             }
             break
           }
-          case 'e2': { // Ne jamais trahir lors de la première manche
-            if (this.round === 1 && lastEntry.action !== 'trahir') m.completed = true
+          case 'e2': { // Coopère lors de la première manche
+            if (this.round === 1 && lastEntry.action === 'cooperer') m.completed = true
             break
           }
           case 'e3': { // Termine une manche avec une mise de 50
@@ -283,9 +415,13 @@ class GameRoom {
             }
             break
           }
-          case 'e7': { // Termine dans le top 3 à la fin d'une manche
+          case 'e7': { // Termine dans le top 3 à la fin d'une manche (classement réel, pas ex æquo avec le 4e)
             const rank = sortedByScore.findIndex((x) => x.id === p.id)
-            if (rank < 3) m.completed = true
+            const fourth = sortedByScore[3]?.score
+            const isRealTop3 =
+              rank < 3 &&
+              (fourth === undefined || sortedByScore[rank].score > fourth)
+            if (isRealTop3) m.completed = true
             break
           }
           case 'e8': { // Coopère lors de la dernière manche
@@ -352,25 +488,92 @@ class GameRoom {
             break
           }
         }
+
+        // Si la mission vient d'être complétée, ajoute ses points au missionScore privé
+        if (m.completed) {
+          p.missionScore += (m.difficulty === 'hard' ? 35 : 15)
+        }
       })
     })
   }
 
   _startIntermission() {
     this.phase = 'intermission'
-    const endsAt = Date.now() + INTERMISSION_MS
+    const duration = this.testMode ? TEST_INTERMISSION_MS : INTERMISSION_MS
+    const endsAt = Date.now() + duration
     this.io.to(this.code).emit('game:intermission', {
       endsAt,
       scores: this.publicPlayers().map((p) => ({ id: p.id, name: p.name, score: p.score })),
       round: this.round,
     })
     this.io.to(this.code).emit('game:state', { phase: 'intermission', players: this.publicPlayers() })
-    setTimeout(() => this._startRound(), INTERMISSION_MS)
+    setTimeout(() => this._startRound(), duration)
   }
 
   _startFinal() {
     this.phase = 'final'
-    this.io.to(this.code).emit('game:final', { players: this.publicPlayers(), phase: 'final' })
+    // À la fin : on révèle missionScore + finalScore pour tous
+    const playersWithFinal = this.publicPlayers().map((pub) => {
+      const priv = this.players.find((x) => x.id === pub.id)
+      const missionScore = priv?.missionScore ?? 0
+      return { ...pub, missionScore, finalScore: (priv?.score ?? 0) + missionScore }
+    })
+    this.io.to(this.code).emit('game:final', { players: playersWithFinal, phase: 'final' })
+  }
+
+  // ─── Bots ───
+
+  _triggerBots() {
+    const bots = this.players.filter((p) => p.isBot)
+    bots.forEach((bot) => {
+      const delay = 800 + Math.random() * 1500
+
+      if (this.phase === 'mission_reveal' && !bot.missionAcknowledged) {
+        setTimeout(() => {
+          if (this.phase !== 'mission_reveal') return
+          this.acknowledgeMission(bot.id)
+        }, delay)
+      } else if (this.phase === 'results' && !bot.resultsAcknowledged) {
+        // Bots acceptent vite pour ne pas bloquer l'humain
+        setTimeout(() => {
+          if (this.phase !== 'results') return
+          this.acknowledgeResults(bot.id)
+        }, 1000 + Math.random() * 1500)
+      } else if (this.phase === 'team_selection' && !bot.teamSubmitted) {
+        setTimeout(() => {
+          if (this.phase !== 'team_selection') return
+          const others = this.players.filter((x) => x.id !== bot.id)
+          const n = Math.random() < 0.5 ? 1 : 2
+
+          let picks
+          // En mode test : le bot a 50% de chance d'inclure le joueur humain
+          // dans ses picks → ~75% de chance que le joueur ait au moins un pacte mutuel
+          const human = this.testMode
+            ? this.players.find((x) => !x.isBot && x.id !== bot.id)
+            : null
+          if (human && Math.random() < 0.5) {
+            const rest = others.filter((x) => x.id !== human.id)
+            const extras = [...rest].sort(() => Math.random() - 0.5).slice(0, n - 1).map((x) => x.id)
+            picks = [human.id, ...extras]
+          } else {
+            picks = [...others].sort(() => Math.random() - 0.5).slice(0, n).map((x) => x.id)
+          }
+
+          this.registerTeamChoice(bot.id, picks)
+        }, delay)
+      } else if (this.phase === 'choice' && !bot.voted) {
+        const validPartners = this.validTeams.get(bot.id) || []
+        if (validPartners.length === 0) return
+        setTimeout(() => {
+          if (this.phase !== 'choice') return
+          const actions = ['cooperer', 'cooperer', 'trahir', 'profiter']
+          const action = actions[Math.floor(Math.random() * actions.length)]
+          const mises = [10, 20, 30, 40, 50]
+          const mise = mises[Math.floor(Math.random() * mises.length)]
+          this.registerChoice(bot.id, { action, mise })
+        }, delay)
+      }
+    })
   }
 
   // ─── Missions ───
@@ -406,7 +609,26 @@ class GameRoom {
     return {
       ...this.stateForAll(),
       myMissions: player.missions,
+      myMissionScore: player.missionScore,
+      myHistory: this._historyForPlayer(player),
     }
+  }
+
+  // Historique personnel enrichi avec les noms (pour l'affichage client)
+  _historyForPlayer(player) {
+    const hist = this.playerHistory.get(player.id) || []
+    const byId = (id) => {
+      const pp = this.players.find((x) => x.id === id)
+      return { id, name: pp?.name || '?', avatar: pp?.avatar || '🎭' }
+    }
+    return hist.map((h) => ({
+      round: h.round,
+      action: h.action,
+      mise: h.mise,
+      delta: h.delta,
+      chosen: (h.chosenIds || []).map(byId),
+      validPartners: (h.partners || []).map(byId),
+    }))
   }
 }
 

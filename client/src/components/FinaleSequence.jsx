@@ -46,17 +46,34 @@ function address(target) {
 }
 
 const SCENE_LIBRARY = [
-  { kind: 'gift',     subtitle: 'Le présent empoisonné' },
-  { kind: 'poison',   subtitle: "Le verre de l'amitié" },
-  { kind: 'rooftop',  subtitle: 'La chute silencieuse' },
-  { kind: 'dagger',   subtitle: 'Le baiser de Judas' },
-  { kind: 'trapdoor', subtitle: 'La trappe oubliée' },
-  { kind: 'banana',   subtitle: 'Le faux pas' },
+  { kind: 'gift',         subtitle: 'Le présent empoisonné' },
+  { kind: 'poison',       subtitle: "Le verre de l'amitié" },
+  { kind: 'rooftop',      subtitle: 'La chute silencieuse' },
+  { kind: 'dagger',       subtitle: 'Le baiser de Judas' },
+  { kind: 'trapdoor',     subtitle: 'La trappe oubliée' },
+  { kind: 'banana',       subtitle: 'Le faux pas' },
+  { kind: 'drowning',     subtitle: 'Les eaux troubles' },
+  { kind: 'hammer',       subtitle: 'Le marteau du destin' },
+  { kind: 'bridge',       subtitle: 'La corde rompue' },
+  { kind: 'wolf',         subtitle: 'Les crocs de la forêt' },
+  { kind: 'electrocution',subtitle: 'Le courant d’adieu' },
+  { kind: 'arrow',        subtitle: 'La flèche sans nom' },
+  { kind: 'spike_trap',   subtitle: 'Les épines du sol' },
+  { kind: 'fireplace',    subtitle: 'Les braises éternelles' },
+  { kind: 'chandelier',   subtitle: 'Le lustre décroché' },
+  { kind: 'well',         subtitle: 'Le puits sans fond' },
 ]
 
 function buildActs(sorted) {
+  // Mélange aléatoire des scènes à chaque partie, sans répétition.
+  // On a 16 scènes pour max 10 actes (11 joueurs) → toujours distinctes.
+  const pool = [...SCENE_LIBRARY]
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  }
   return sorted.slice(0, -1).map((victim, i) => {
-    const lib = SCENE_LIBRARY[i % SCENE_LIBRARY.length]
+    const lib = pool[i % pool.length]
     return {
       id: `act-${i}`,
       index: i,
@@ -71,7 +88,9 @@ function buildActs(sorted) {
 
 // ============ Orchestrateur ============
 export default function FinaleSequence({ sorted, onComplete }) {
-  const acts = buildActs(sorted)
+  // buildActs mélange les scènes au tirage : on le mémorise pour que la liste
+  // reste stable pendant toute la séquence (sinon chaque render re-shuffle).
+  const [acts] = useState(() => buildActs(sorted))
   const [actIdx, setActIdx] = useState(0)
   const [phase, setPhase] = useState('scene') // 'scene' | 'interlude' | 'blackout'
   const droneRef = useRef(null)
@@ -128,12 +147,23 @@ export default function FinaleSequence({ sorted, onComplete }) {
 
 // ============ Dispatcher de scène ============
 function SceneRouter({ act }) {
-  if (act.kind === 'gift')     return <GiftScene     victim={act.victim} killer={act.killer} />
-  if (act.kind === 'poison')   return <PoisonScene   victim={act.victim} killer={act.killer} />
-  if (act.kind === 'rooftop')  return <RooftopScene  victim={act.victim} killer={act.killer} />
-  if (act.kind === 'dagger')   return <DaggerScene   victim={act.victim} killer={act.killer} />
-  if (act.kind === 'trapdoor') return <TrapdoorScene victim={act.victim} killer={act.killer} />
-  if (act.kind === 'banana')   return <BananaScene   victim={act.victim} killer={act.killer} />
+  const p = { victim: act.victim, killer: act.killer }
+  if (act.kind === 'gift')         return <GiftScene         {...p} />
+  if (act.kind === 'poison')       return <PoisonScene       {...p} />
+  if (act.kind === 'rooftop')      return <RooftopScene      {...p} />
+  if (act.kind === 'dagger')       return <DaggerScene       {...p} />
+  if (act.kind === 'trapdoor')     return <TrapdoorScene     {...p} />
+  if (act.kind === 'banana')       return <BananaScene       {...p} />
+  if (act.kind === 'drowning')     return <DrowningScene     {...p} />
+  if (act.kind === 'hammer')       return <HammerScene       {...p} />
+  if (act.kind === 'bridge')       return <BridgeScene       {...p} />
+  if (act.kind === 'wolf')         return <WolfScene         {...p} />
+  if (act.kind === 'electrocution')return <ElectrocutionScene {...p} />
+  if (act.kind === 'arrow')        return <ArrowScene        {...p} />
+  if (act.kind === 'spike_trap')   return <SpikeTrapScene    {...p} />
+  if (act.kind === 'fireplace')    return <FireplaceScene    {...p} />
+  if (act.kind === 'chandelier')   return <ChandelierScene   {...p} />
+  if (act.kind === 'well')         return <WellScene         {...p} />
   return null
 }
 
@@ -233,6 +263,7 @@ function Subtitle({ text, speaker, show }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           className="absolute left-0 right-0 bottom-10 px-6 flex justify-center pointer-events-none"
+          style={{ zIndex: 20 }}
         >
           <div
             className="max-w-md text-center"
@@ -809,12 +840,10 @@ function GiftScene({ victim, killer }) {
 // ================= SCÈNE 2 : POISON / TAVERNE ==============
 // ============================================================
 function Goblet({ tilt, mirror = false }) {
-  // Au moment de boire, chacun incline son verre vers l'extérieur (coupe s'éloigne de l'autre perso).
-  // - Victime à gauche (mirror=false) → verre penche vers la gauche (-60°)
-  // - Tueur à droite (mirror=true)    → verre penche vers la droite (+60°)
+  // Les deux verres inclinent vers la droite quand on boit (direction choisie par Fred).
   return (
     <motion.svg viewBox="0 0 40 60" className="w-full h-full"
-      animate={{ rotate: tilt ? (mirror ? 60 : -60) : 0 }}
+      animate={{ rotate: tilt ? 60 : 0 }}
       transition={{ duration: 0.5 }}
       style={{ transformOrigin: '50% 93%' }}
     >
@@ -988,11 +1017,11 @@ function PoisonScene({ victim, killer }) {
       </motion.div>
 
       <Subtitle show={step === 3} speaker={victim.name}
-        text="C'est fait. Notre rival ne nous gênera plus jamais." />
+        text="Je ne refuse jamais un verre après un long voyage." />
       <Subtitle show={step === 5 || step === 6} speaker={killer.name}
-        text={`Tu as bien travaillé, ${address(victim).monCherLow}. Bois à notre triomphe.`} />
+        text="À ta santé. C'est un cru que j'ai gardé pour toi." />
       <Subtitle show={step >= 9} speaker={killer.name}
-        text="Les complices partagent tout… sauf le pouvoir." />
+        text="Un bon vin ne s'oublie pas. Il emporte tout avec lui." />
     </motion.div>
   )
 }
@@ -1155,11 +1184,11 @@ function RooftopScene({ victim, killer }) {
       </motion.div>
 
       <Subtitle show={step === 3} speaker={victim.name}
-        text="Notre allié dort enfin. La voie est libre, à nous deux !" />
+        text="Je monte rarement aussi haut. Quelle nuit claire…" />
       <Subtitle show={step === 4 || step === 5} speaker={killer.name}
-        text="Approche camarade. Viens admirer ton règne d'ici." />
+        text="Avance au bord, la vue est imprenable d'ici." />
       <Subtitle show={step >= 9} speaker={killer.name}
-        text="Le sommet… n'est fait que pour un." />
+        text="Le sommet n'est fait… que pour un seul." />
     </motion.div>
   )
 }
@@ -1454,11 +1483,11 @@ function DaggerScene({ victim, killer }) {
       </AnimatePresence>
 
       <Subtitle show={step === 3} speaker={victim.name}
-        text="Mon frère d'armes ! Enfin, nous voilà seuls au sommet." />
+        text="Tu m'as convoqué comme un frère. Me voilà." />
       <Subtitle show={step === 4 || step === 5} speaker={killer.name}
-        text="Viens dans mes bras… tu l'as bien mérité." />
+        text="Viens dans mes bras, il est temps que je te remercie." />
       <Subtitle show={step >= 9} speaker={killer.name}
-        text="Même les frères finissent par se trahir." />
+        text="Même les frères se poignardent. Surtout les frères." />
     </motion.div>
   )
 }
@@ -1804,11 +1833,1325 @@ function BananaScene({ victim, killer }) {
       )}
 
       <Subtitle show={step === 4} speaker={victim.name}
-        text="Je l'ai eu ! Le trône nous appartient, complice…" />
+        text="L'auberge est paisible ce soir. Tu m'attendais ?" />
       <Subtitle show={step === 5 || step === 6} speaker={killer.name}
         text="Approche, j'ai préparé une petite surprise pour toi." />
       <Subtitle show={step >= 9} speaker={killer.name}
         text="Un roi qui trébuche… n'est plus un roi." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= DÉCOR 5 : FORÊT BRUMEUSE ================
+// ============================================================
+function ForestBackdrop() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(180deg, #020a12 0%, #041014 35%, #06140c 75%, #020604 100%)',
+      }} />
+      {/* Lune discrète */}
+      <div className="absolute" style={{
+        top: '12%', right: '20%', width: '80px', height: '80px', borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(220,230,200,0.5) 0%, transparent 70%)',
+        filter: 'blur(3px)',
+      }} />
+      {/* Silhouettes d'arbres au fond (rangée arrière) */}
+      <svg className="absolute" style={{ bottom: '22%', left: 0, width: '100%', height: '40%' }} viewBox="0 0 400 160" preserveAspectRatio="none">
+        {Array.from({ length: 14 }).map((_, i) => (
+          <polygon key={i}
+            points={`${20 + i * 28},160 ${10 + i * 28},110 ${30 + i * 28},110 ${20 + i * 28},60 ${36 + i * 28},110 ${40 + i * 28},110`}
+            fill="#020804" opacity="0.85" />
+        ))}
+      </svg>
+      {/* Arbres proches */}
+      <svg className="absolute" style={{ bottom: '18%', left: 0, width: '100%', height: '55%' }} viewBox="0 0 400 200" preserveAspectRatio="none">
+        <polygon points="5,200 5,120 -10,120 20,50 50,120 35,120 35,200" fill="#010402" />
+        <polygon points="360,200 360,130 340,130 380,40 420,130 400,130 400,200" fill="#010402" />
+      </svg>
+      {/* Sol (feuilles mortes) */}
+      <div className="absolute bottom-0 left-0 right-0" style={{
+        height: '22%',
+        background: 'linear-gradient(180deg, #1a1408 0%, #050402 100%)',
+      }} />
+      {/* Brume mobile */}
+      <motion.div
+        animate={{ x: ['-10%', '110%'], opacity: [0.15, 0.35, 0.15] }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+        className="absolute"
+        style={{
+          bottom: '25%', width: '60vmin', height: '12vmin',
+          background: 'radial-gradient(ellipse, rgba(200,220,200,0.2) 0%, transparent 70%)',
+          filter: 'blur(8px)',
+        }}
+      />
+      {/* Paire d'yeux inquiétants (loin) */}
+      <motion.div
+        animate={{ opacity: [0.6, 1, 0.5, 0.9, 0.6] }}
+        transition={{ duration: 2.5, repeat: Infinity }}
+        className="absolute"
+        style={{ bottom: '40%', right: '38%', width: '2px', height: '2px', background: '#ffa020', boxShadow: '0 0 4px 1px rgba(255,160,30,0.8)' }}
+      />
+      <motion.div
+        animate={{ opacity: [0.5, 1, 0.6, 0.9, 0.5] }}
+        transition={{ duration: 2.5, repeat: Infinity, delay: 0.2 }}
+        className="absolute"
+        style={{ bottom: '40%', right: 'calc(38% - 8px)', width: '2px', height: '2px', background: '#ffa020', boxShadow: '0 0 4px 1px rgba(255,160,30,0.8)' }}
+      />
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 200px 70px rgba(0,0,0,0.95)' }} />
+    </div>
+  )
+}
+
+// ============================================================
+// ================= DÉCOR 6 : SALON / CHEMINÉE ==============
+// ============================================================
+function ParlorBackdrop() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Mur bordeaux */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(180deg, #3a1a1e 0%, #2a0e12 60%, #140608 100%)',
+      }} />
+      {/* Moulures (lignes horizontales) */}
+      <div className="absolute" style={{ top: '30%', left: 0, right: 0, height: '2px', background: 'rgba(180,140,80,0.25)' }} />
+      <div className="absolute" style={{ top: '32%', left: 0, right: 0, height: '1px', background: 'rgba(180,140,80,0.15)' }} />
+      {/* Tableau à gauche */}
+      <div className="absolute" style={{
+        top: '12%', left: '14%', width: '12vmin', height: '16vmin',
+        background: 'linear-gradient(180deg, #1a0a04 0%, #0a0402 100%)',
+        border: '3px solid #7a5a20',
+        boxShadow: '2px 3px 6px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ position: 'absolute', inset: '10%', background: 'linear-gradient(180deg, #4a2a1a 0%, #1a0a04 100%)' }} />
+      </div>
+      {/* Tableau à droite */}
+      <div className="absolute" style={{
+        top: '14%', right: '14%', width: '10vmin', height: '14vmin',
+        background: 'linear-gradient(180deg, #1a0a04 0%, #0a0402 100%)',
+        border: '3px solid #7a5a20',
+      }}>
+        <div style={{ position: 'absolute', inset: '10%', background: 'radial-gradient(circle, #5a3020 0%, #1a0a04 100%)' }} />
+      </div>
+      {/* Cheminée au centre */}
+      <div className="absolute" style={{
+        bottom: '22%', left: '50%', transform: 'translateX(-50%)',
+        width: '30vmin', height: '28vmin',
+        background: 'linear-gradient(180deg, #2a1608 0%, #1a0c04 60%, #0a0604 100%)',
+        borderRadius: '6px 6px 0 0',
+        border: '2px solid #140804',
+        boxShadow: 'inset 0 3px 6px rgba(255,200,100,0.15), 0 4px 10px rgba(0,0,0,0.7)',
+      }}>
+        {/* Ouverture de cheminée (noir) */}
+        <div style={{
+          position: 'absolute', left: '18%', right: '18%', top: '18%', bottom: '12%',
+          background: 'linear-gradient(180deg, #000 0%, #1a0a04 100%)',
+          borderRadius: '4px 4px 0 0',
+          overflow: 'hidden',
+        }}>
+          {/* Flammes animées */}
+          <motion.div
+            animate={{ scaleY: [1, 1.15, 0.95, 1.1, 1], scaleX: [1, 0.9, 1.05, 0.95, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            style={{
+              position: 'absolute', bottom: 0, left: '15%', right: '15%', height: '60%',
+              background: 'radial-gradient(ellipse at 50% 100%, #fff3a0 0%, #ff9030 45%, #c23010 80%, transparent 100%)',
+              borderRadius: '40% 40% 20% 20%',
+              filter: 'blur(1.5px)',
+              transformOrigin: '50% 100%',
+            }}
+          />
+          {/* Bûches */}
+          <div style={{
+            position: 'absolute', bottom: '2%', left: '20%', width: '30%', height: '8%',
+            background: 'linear-gradient(180deg, #4a2810 0%, #1a0c04 100%)',
+            borderRadius: '3px',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: '2%', right: '20%', width: '30%', height: '8%',
+            background: 'linear-gradient(180deg, #3a2010 0%, #1a0c04 100%)',
+            borderRadius: '3px',
+          }} />
+        </div>
+      </div>
+      {/* Halo cheminée */}
+      <div className="absolute" style={{
+        bottom: '15%', left: '50%', transform: 'translateX(-50%)',
+        width: '55vmin', height: '35vmin',
+        background: 'radial-gradient(ellipse, rgba(255,140,40,0.2) 0%, transparent 70%)',
+        filter: 'blur(8px)',
+        pointerEvents: 'none',
+      }} />
+      {/* Plancher bois */}
+      <div className="absolute bottom-0 left-0 right-0" style={{
+        height: '22%',
+        background: 'linear-gradient(180deg, #3a1e08 0%, #1a0e04 100%)',
+      }} />
+      <svg className="absolute bottom-0 left-0 right-0" style={{ height: '22%' }} viewBox="0 0 100 20" preserveAspectRatio="none">
+        <line x1="0" y1="6" x2="100" y2="6" stroke="#0a0402" strokeWidth="0.3" />
+        <line x1="0" y1="13" x2="100" y2="13" stroke="#0a0402" strokeWidth="0.3" />
+      </svg>
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 180px 60px rgba(0,0,0,0.92)' }} />
+    </div>
+  )
+}
+
+// ============================================================
+// ================= DÉCOR 7 : LABORATOIRE ====================
+// ============================================================
+function LabBackdrop() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Mur métallique sombre */}
+      <div className="absolute inset-0" style={{
+        background: `
+          linear-gradient(180deg, #0c1624 0%, #081018 50%, #040608 100%),
+          repeating-linear-gradient(90deg, transparent 0 60px, rgba(0,0,0,0.4) 60px 61px)
+        `,
+        backgroundBlendMode: 'normal, multiply',
+      }} />
+      {/* Machine Tesla à gauche (globe avec éclairs) */}
+      <div className="absolute" style={{
+        top: '18%', left: '6%', width: '14vmin', height: '14vmin',
+      }}>
+        {/* pied */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: '30%', width: '40%', height: '30%',
+          background: 'linear-gradient(180deg, #3a3a48 0%, #14141c 100%)',
+        }} />
+        {/* sphère */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '70%',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, #6a92ff 0%, #2a52a8 50%, #0a1428 90%)',
+          boxShadow: 'inset 0 0 20px rgba(100,160,255,0.4), 0 0 30px 8px rgba(80,140,255,0.35)',
+        }} />
+        {/* éclairs */}
+        <motion.div
+          animate={{ opacity: [0.4, 1, 0.3, 0.9, 0.5] }}
+          transition={{ duration: 0.4, repeat: Infinity }}
+          style={{
+            position: 'absolute', top: '8%', left: '15%', width: '70%', height: '55%',
+            background: 'radial-gradient(circle, rgba(180,220,255,0.6) 0%, transparent 70%)',
+            filter: 'blur(2px)',
+          }}
+        />
+      </div>
+      {/* Étagère avec fioles à droite */}
+      <svg className="absolute" style={{ top: '20%', right: '5%', width: '18%', height: '25%' }} viewBox="0 0 140 110" preserveAspectRatio="none">
+        <rect x="0" y="45" width="140" height="4" fill="#14141c" />
+        <rect x="0" y="95" width="140" height="4" fill="#14141c" />
+        {[10,32,54,76,98,120].map((x, i) => (
+          <g key={i}>
+            <rect x={x} y="15" width="12" height="30" fill={['#4a7a28','#7a2030','#287088','#c08020','#50308a','#20a078'][i]} opacity="0.8" />
+            <rect x={x+3} y="10" width="6" height="6" fill="#0a0a14" />
+          </g>
+        ))}
+        {[10,32,54,76,98,120].map((x, i) => (
+          <g key={`row2-${i}`}>
+            <rect x={x} y="65" width="12" height="30" fill={['#8a2070','#208a40','#5030a0','#a04020','#2050a0','#a08020'][i]} opacity="0.8" />
+            <rect x={x+3} y="60" width="6" height="6" fill="#0a0a14" />
+          </g>
+        ))}
+      </svg>
+      {/* Établi au centre */}
+      <div className="absolute" style={{
+        bottom: '22%', left: '30%', right: '30%', height: '4vmin',
+        background: 'linear-gradient(180deg, #2a2a34 0%, #14141c 100%)',
+        border: '1px solid #04040c',
+        boxShadow: '0 4px 10px rgba(0,0,0,0.7)',
+      }} />
+      {/* Sol */}
+      <div className="absolute bottom-0 left-0 right-0" style={{
+        height: '22%',
+        background: `
+          linear-gradient(180deg, #181820 0%, #06060a 100%),
+          repeating-linear-gradient(90deg, transparent 0 50px, rgba(0,0,0,0.4) 50px 51px)
+        `,
+        backgroundBlendMode: 'normal, multiply',
+      }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 180px 60px rgba(0,0,0,0.9)' }} />
+    </div>
+  )
+}
+
+// ============================================================
+// ================= DÉCOR 8 : PONT SUR GORGE ================
+// ============================================================
+function BridgeBackdrop() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Ciel crépusculaire */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(180deg, #1a1528 0%, #2a1820 40%, #3a1810 65%, #1a0a08 100%)',
+      }} />
+      {/* Soleil couchant */}
+      <div className="absolute" style={{
+        top: '30%', left: '50%', transform: 'translateX(-50%)',
+        width: '90px', height: '90px', borderRadius: '50%',
+        background: 'radial-gradient(circle, #ff8030 0%, #c02808 60%, transparent 90%)',
+        filter: 'blur(2px)',
+        boxShadow: '0 0 70px 20px rgba(255,80,20,0.3)',
+      }} />
+      {/* Montagnes au fond */}
+      <svg className="absolute" style={{ bottom: '38%', left: 0, width: '100%', height: '20%' }} viewBox="0 0 400 80" preserveAspectRatio="none">
+        <polygon points="0,80 0,40 60,20 110,50 160,15 220,45 280,25 340,40 400,30 400,80" fill="#0a0608" />
+      </svg>
+      {/* Gorge (vide très noir en bas) */}
+      <div className="absolute" style={{
+        bottom: 0, left: 0, right: 0, height: '40%',
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, #000 70%)',
+      }} />
+      {/* Falaise à gauche */}
+      <div className="absolute" style={{
+        bottom: 0, left: 0, width: '18%', height: '45%',
+        background: 'linear-gradient(90deg, #1a1410 0%, #2a1e18 70%, #0a0804 100%)',
+        boxShadow: '6px 0 14px rgba(0,0,0,0.8)',
+      }} />
+      {/* Falaise à droite */}
+      <div className="absolute" style={{
+        bottom: 0, right: 0, width: '18%', height: '45%',
+        background: 'linear-gradient(270deg, #1a1410 0%, #2a1e18 70%, #0a0804 100%)',
+        boxShadow: '-6px 0 14px rgba(0,0,0,0.8)',
+      }} />
+      {/* Deux cordes horizontales du pont (rail supérieur) */}
+      <div className="absolute" style={{
+        bottom: '40%', left: '18%', right: '18%', height: '2px',
+        background: '#8a5a28',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.8)',
+      }} />
+      <div className="absolute" style={{
+        bottom: '39%', left: '18%', right: '18%', height: '2px',
+        background: '#5a3818',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.8)',
+      }} />
+      {/* Planches du tablier du pont */}
+      <svg className="absolute" style={{ bottom: '33%', left: '18%', right: '18%', height: '3vmin' }} viewBox="0 0 100 6" preserveAspectRatio="none">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <rect key={i} x={i * 3.3} y="0" width="3" height="6" fill={i % 2 ? '#4a2a14' : '#3a1e08'} stroke="#1a0e04" strokeWidth="0.2" />
+        ))}
+      </svg>
+      {/* Cordes d'attache verticales */}
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="absolute" style={{
+          bottom: '36%', left: `${18 + 6.4 * i}%`, width: '1px', height: '4vmin',
+          background: '#5a3818',
+        }} />
+      ))}
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 180px 60px rgba(0,0,0,0.92)' }} />
+    </div>
+  )
+}
+
+// ============================================================
+// ================= DÉCOR 9 : COUR / PUITS ==================
+// ============================================================
+function CourtyardBackdrop() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Ciel nuit étoilée */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(180deg, #050814 0%, #0e1422 45%, #1a1a14 75%, #050408 100%)',
+      }} />
+      {/* Quelques étoiles */}
+      {Array.from({ length: 25 }).map((_, i) => (
+        <div key={i} className="absolute rounded-full bg-white"
+          style={{
+            left: `${(i * 37) % 100}%`, top: `${(i * 17) % 40}%`,
+            width: '1.5px', height: '1.5px', opacity: 0.6,
+          }}
+        />
+      ))}
+      {/* Mur du château à l'arrière */}
+      <div className="absolute" style={{
+        bottom: '32%', left: 0, right: 0, height: '30%',
+        background: 'linear-gradient(180deg, #2a2420 0%, #14100a 100%)',
+        backgroundImage: `
+          repeating-linear-gradient(0deg, transparent 0 24px, rgba(0,0,0,0.35) 24px 25px),
+          repeating-linear-gradient(90deg, transparent 0 40px, rgba(0,0,0,0.35) 40px 41px)
+        `,
+        backgroundBlendMode: 'multiply',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.7)',
+      }} />
+      {/* Créneaux du mur */}
+      <div className="absolute" style={{ bottom: '62%', left: 0, right: 0, height: '2.5vmin', display: 'flex' }}>
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div key={i} style={{
+            width: '4vmin', height: '100%',
+            marginRight: '1vmin',
+            background: 'linear-gradient(180deg, #2a2420 0%, #14100a 100%)',
+          }} />
+        ))}
+      </div>
+      {/* Deux torches sur le mur */}
+      {[15, 80].map((x, idx) => (
+        <div key={idx}>
+          <div className="absolute" style={{
+            bottom: '50%', left: `${x}%`, width: '1vmin', height: '5vmin',
+            background: '#1a0e04',
+          }} />
+          <motion.div
+            animate={{ scaleY: [1, 1.15, 0.95, 1.1, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity, delay: idx * 0.3 }}
+            style={{
+              position: 'absolute', bottom: 'calc(50% + 4vmin)', left: `calc(${x}% - 1vmin)`,
+              width: '3vmin', height: '4vmin',
+              background: 'radial-gradient(ellipse at 50% 100%, #fff3a0 0%, #ff9030 50%, #c23010 85%, transparent 100%)',
+              borderRadius: '50% 50% 20% 20%',
+              filter: 'blur(1px)',
+              transformOrigin: '50% 100%',
+            }}
+          />
+        </div>
+      ))}
+      {/* Sol pavé */}
+      <div className="absolute bottom-0 left-0 right-0" style={{
+        height: '32%',
+        background: `
+          linear-gradient(180deg, #1a1814 0%, #06060a 100%),
+          repeating-linear-gradient(0deg, transparent 0 18px, rgba(0,0,0,0.4) 18px 19px),
+          repeating-linear-gradient(90deg, transparent 0 30px, rgba(0,0,0,0.35) 30px 31px)
+        `,
+        backgroundBlendMode: 'normal, multiply, multiply',
+      }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 180px 60px rgba(0,0,0,0.94)' }} />
+    </div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : NOYADE ===========================
+// ============================================================
+function DrowningScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))   // s'approche de la fontaine
+    at(6700, () => setStep(5))   // dialogue K
+    at(9000, () => setStep(6))   // penche au-dessus de l'eau
+    at(9600, () => { setStep(7); playThud() })  // tête plongée
+    at(12000, () => setStep(8))
+    at(12600, () => setStep(9))  // dialogue final
+    at(14000, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = step >= 4 ? '38%' : '20%'
+  const KILLER_X = step >= 6 ? '52%' : '72%'
+
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimRotate  = step >= 6 ? 70 : 0
+  const victimScale   = step >= 7 ? 0.6 : 1
+  const victimBottom  = step >= 7 ? 'calc(22% + 2vmin)' : CHAR_BOTTOM
+
+  const killerOpacity = step >= 2 ? 1 : 0
+  const killerScaleKf = step === 10 ? [1, 1.08, 1, 1.08, 1] : 1
+  const killerYKf     = step === 10 ? [0, -6, 0, -6, 0] : 0
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <CourtyardBackdrop />
+      {/* Fontaine/bassin circulaire au centre */}
+      <div className="absolute" style={{
+        bottom: '20%', left: '50%', transform: 'translateX(-50%)',
+        width: '28vmin', height: '4vmin',
+        background: 'linear-gradient(180deg, #2a2a32 0%, #14141a 100%)',
+        borderRadius: '50% / 40%',
+        border: '2px solid #0a0a12',
+        zIndex: 3,
+      }} />
+      {/* Eau dans le bassin */}
+      <div className="absolute" style={{
+        bottom: '22%', left: '50%', transform: 'translateX(-50%)',
+        width: '24vmin', height: '3vmin',
+        borderRadius: '50% / 40%',
+        background: 'radial-gradient(ellipse, #2060a0 0%, #0a3060 70%, #02122a 100%)',
+        boxShadow: 'inset 0 3px 6px rgba(0,0,0,0.8)',
+        zIndex: 4,
+      }} />
+      {/* Ondulations */}
+      <motion.div
+        animate={{ scale: step === 7 ? [1, 1.3, 1.1, 1.4, 1] : 1 }}
+        transition={{ duration: 0.5, repeat: step === 7 ? 2 : 0 }}
+        style={{
+          position: 'absolute', bottom: '22.5%', left: '50%', transform: 'translateX(-50%)',
+          width: '16vmin', height: '1.5vmin',
+          borderRadius: '50%',
+          border: '1.5px solid rgba(150,200,255,0.5)',
+          zIndex: 4,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Victime */}
+      <motion.img
+        src={victim.avatar} alt=""
+        animate={{
+          left: step >= 1 ? VICTIM_X : '-20%',
+          opacity: victimOpacity,
+          rotate: victimRotate,
+          scale: victimScale,
+          bottom: victimBottom,
+        }}
+        transition={{ left: { duration: 1.1, ease: 'easeInOut' }, opacity: { duration: 0.5 }, rotate: { duration: 0.6 }, scale: { duration: 0.6 }, bottom: { duration: 0.5 } }}
+        style={{
+          position: 'absolute',
+          width: CHAR_W, height: CHAR_W, objectFit: 'contain',
+          transform: 'translateX(-50%)',
+          filter: CUTOUT,
+          zIndex: 5,
+        }}
+      />
+      {/* Tueur */}
+      <motion.img
+        src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: killerOpacity, scale: killerScaleKf, y: killerYKf }}
+        transition={{ left: { duration: 1.1, ease: 'easeInOut' }, opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 }, y: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+        style={{
+          position: 'absolute', bottom: CHAR_BOTTOM,
+          width: CHAR_W, height: CHAR_W, objectFit: 'contain',
+          transform: 'translateX(-50%) scaleX(-1)',
+          filter: CUTOUT,
+          zIndex: 6,
+        }}
+      />
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Tu m'as fait venir jusqu'à la cour. Beau cadre pour parler." />
+      <Subtitle show={step === 5} speaker={killer.name}
+        text="Penche-toi sur l'eau, il y a quelque chose que tu dois voir." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Dans un miroir d'eau, chacun voit sa propre fin." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : MARTEAU ==========================
+// ============================================================
+function Hammer() {
+  return (
+    <svg viewBox="0 0 60 80" className="w-full h-full">
+      <defs>
+        <linearGradient id="hammerHead" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#9a9aa4" />
+          <stop offset="50%" stopColor="#606070" />
+          <stop offset="100%" stopColor="#2a2a32" />
+        </linearGradient>
+      </defs>
+      {/* manche */}
+      <rect x="26" y="20" width="8" height="52" fill="#3a1e08" stroke="#1a0e04" strokeWidth="0.8" />
+      <line x1="28" y1="26" x2="32" y2="26" stroke="#1a0e04" strokeWidth="0.5" />
+      <line x1="28" y1="36" x2="32" y2="36" stroke="#1a0e04" strokeWidth="0.5" />
+      {/* tête */}
+      <rect x="8" y="6" width="44" height="22" fill="url(#hammerHead)" stroke="#141418" strokeWidth="1" rx="2" />
+      <path d="M 10 10 L 50 10 L 48 16 L 12 16 Z" fill="#ffffff" opacity="0.15" />
+    </svg>
+  )
+}
+
+function HammerScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  const [shake, setShake] = useState(false)
+  const [flashRed, setFlashRed] = useState(false)
+
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))   // marteau apparaît
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // le marteau se lève haut
+    at(9400, () => {
+      setStep(7); playThud()
+      setShake(true); setFlashRed(true)
+      setTimeout(() => setShake(false), 400)
+      setTimeout(() => setFlashRed(false), 500)
+    })
+    at(10400, () => setStep(8))
+    at(11200, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '28vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = '30%'
+  const KILLER_X = '62%'
+
+  const victimLeft = step >= 1 ? VICTIM_X : '-20%'
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimRotate  = step >= 7 ? 80 : 0
+  const victimY       = step >= 7 ? 30 : 0
+  const victimScale   = step >= 7 ? 0.85 : 1
+
+  const killerOpacity = step >= 2 ? 1 : 0
+  const killerScaleKf = step === 10 ? [1, 1.08, 1, 1.08, 1] : 1
+  const killerYKf     = step === 10 ? [0, -6, 0, -6, 0] : 0
+
+  const hammerOpacity = (step >= 4 && step < 8) ? 1 : 0
+  const hammerBottom = step === 6 ? 'calc(22% + 22vmin)'
+    : step === 7 ? 'calc(22% + 10vmin)'
+    : 'calc(22% + 16vmin)'
+  const hammerRotate = step === 6 ? 30 : step === 7 ? -70 : 0
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <CryptBackdrop />
+
+      <motion.div className="absolute inset-0" animate={shake ? { x: [0, -6, 8, -4, 0], y: [0, 3, -2, 2, 0] } : { x: 0, y: 0 }} transition={shake ? { duration: 0.4 } : { duration: 0 }}>
+        <motion.img src={victim.avatar} alt=""
+          animate={{ left: victimLeft, opacity: victimOpacity, rotate: victimRotate, y: victimY, scale: victimScale }}
+          transition={{ left: { duration: 1.1, ease: 'easeOut' }, opacity: { duration: 0.5 }, rotate: { duration: 0.4 }, y: { duration: 0.4 }, scale: { duration: 0.4 } }}
+          style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+        />
+        <motion.img src={killer.avatar} alt=""
+          animate={{ left: KILLER_X, opacity: killerOpacity, scale: killerScaleKf, y: killerYKf }}
+          transition={{ opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 }, y: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+          style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 5 }}
+        />
+        {/* Marteau dans la main du tueur */}
+        <motion.div
+          animate={{
+            left: `calc(${KILLER_X} - 8vmin)`,
+            bottom: hammerBottom,
+            opacity: hammerOpacity,
+            rotate: hammerRotate,
+          }}
+          transition={{ duration: 0.35, ease: 'easeIn' }}
+          style={{ position: 'absolute', width: '10vmin', height: '12vmin', transform: 'translateX(-50%)', filter: 'drop-shadow(0 3px 5px rgba(0,0,0,0.8))', zIndex: 7 }}
+        >
+          <Hammer />
+        </motion.div>
+      </motion.div>
+
+      <AnimatePresence>
+        {flashRed && (
+          <motion.div key="flR" className="absolute inset-0 pointer-events-none" initial={{ opacity: 0 }} animate={{ opacity: [0, 0.5, 0.2, 0] }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} style={{ background: 'rgba(160,10,10,0.7)' }} />
+        )}
+      </AnimatePresence>
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Tu as quelque chose à me montrer dans ce caveau ?" />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Viens plus près, j'ai quelque chose à te confier." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Et le marteau retombe sur le clou de trop." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : PONT COUPÉ ======================
+// ============================================================
+function BridgeScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))   // victime avance sur le pont
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // tueur sort une dague / coupe la corde
+    at(9400, () => { setStep(7); playThud() })  // corde rompue, victime tombe
+    at(10200, () => playThud())
+    at(10800, () => setStep(8))
+    at(11400, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '33%'   // ils sont sur le pont, plus haut
+  const VICTIM_X = step >= 4 ? '48%' : '22%'   // avance sur le pont
+  const KILLER_X = '78%'
+
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimBottom  = step >= 7 ? '-50%' : CHAR_BOTTOM
+  const victimRotate  = step >= 7 ? 160 : 0
+  const victimScale   = step >= 7 ? 0.4 : 1
+
+  const killerOpacity = step >= 2 ? 1 : 0
+  const killerScaleKf = step === 10 ? [1, 1.08, 1, 1.08, 1] : 1
+
+  // Pont qui se casse au step 7 : le tablier bascule vers la gauche
+  const bridgeLeftRotate = step >= 7 ? -25 : 0
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <BridgeBackdrop />
+      {/* Tablier central qui bascule au step 7 */}
+      <motion.div
+        animate={{ rotate: bridgeLeftRotate, x: step >= 7 ? -30 : 0 }}
+        transition={{ duration: 0.6, ease: 'easeIn' }}
+        style={{
+          position: 'absolute', bottom: '33%', left: '18%',
+          width: '64%', height: '3vmin',
+          background: 'linear-gradient(180deg, #4a2810 0%, #1a0c04 100%)',
+          transformOrigin: '100% 50%',
+          zIndex: 4,
+          border: '1px solid #0a0604',
+        }}
+      />
+
+      <motion.img src={victim.avatar} alt=""
+        animate={{ left: step >= 1 ? VICTIM_X : '10%', opacity: victimOpacity, bottom: victimBottom, rotate: victimRotate, scale: victimScale }}
+        transition={{ left: { duration: 1.2, ease: 'easeInOut' }, opacity: { duration: 0.5 }, bottom: { duration: 1, ease: 'easeIn' }, rotate: { duration: 1 }, scale: { duration: 1 } }}
+        style={{ position: 'absolute', width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+      />
+      <motion.img src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: killerOpacity, scale: killerScaleKf }}
+        transition={{ opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 5 }}
+      />
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Le pont tient encore ? Tu es certain de toi ?" />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Avance, je tiens la corde depuis mon côté." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Un pont, c'est un piège tendu entre deux rives." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : LOUP (forêt) ====================
+// ============================================================
+function WolfSilhouette() {
+  return (
+    <svg viewBox="0 0 120 80" className="w-full h-full">
+      <defs>
+        <linearGradient id="wolfBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2a2a30" />
+          <stop offset="100%" stopColor="#0a0a12" />
+        </linearGradient>
+      </defs>
+      {/* corps */}
+      <path d="M 20 60 Q 30 45 60 45 Q 90 45 100 55 L 110 62 L 105 72 L 20 72 Z" fill="url(#wolfBody)" />
+      {/* tête */}
+      <path d="M 90 50 L 118 38 L 115 55 L 100 58 Z" fill="url(#wolfBody)" />
+      {/* oreilles */}
+      <polygon points="100,40 104,28 108,42" fill="#050508" />
+      {/* yeux (rouges luminescents) */}
+      <circle cx="110" cy="46" r="1.5" fill="#ff4020" />
+      {/* pattes */}
+      <rect x="26" y="60" width="4" height="14" fill="#0a0a12" />
+      <rect x="42" y="60" width="4" height="14" fill="#0a0a12" />
+      <rect x="80" y="60" width="4" height="14" fill="#0a0a12" />
+      <rect x="94" y="60" width="4" height="14" fill="#0a0a12" />
+      {/* queue */}
+      <path d="M 20 55 Q 10 48 8 42" stroke="#0a0a12" strokeWidth="6" fill="none" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function WolfScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  const [flash, setFlash] = useState(false)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))   // bruit sinistre
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // le loup surgit de la droite
+    at(9400, () => {
+      setStep(7); playThud()
+      setFlash(true); setTimeout(() => setFlash(false), 500)
+    })
+    at(10400, () => setStep(8))
+    at(11200, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = '30%'
+  const KILLER_X = '68%'
+
+  const victimLeft = step >= 1 ? VICTIM_X : '-20%'
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimRotate = step === 7 ? 25 : step >= 8 ? 70 : 0
+  const victimScale  = step >= 7 ? 0.8 : 1
+
+  const killerOpacity = step >= 2 ? 1 : 0
+  const killerScaleKf = step === 10 ? [1, 1.08, 1, 1.08, 1] : 1
+
+  // Loup surgit depuis la gauche (vient de derrière)
+  const wolfOpacity = step >= 6 ? 1 : 0
+  const wolfLeft    = step >= 7 ? '30%' : step >= 6 ? '-10%' : '-30%'
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <ForestBackdrop />
+      <motion.img src={victim.avatar} alt=""
+        animate={{ left: victimLeft, opacity: victimOpacity, rotate: victimRotate, scale: victimScale }}
+        transition={{ left: { duration: 1.1, ease: 'easeOut' }, opacity: { duration: 0.5 }, rotate: { duration: 0.4 }, scale: { duration: 0.4 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+      />
+      <motion.img src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: killerOpacity, scale: killerScaleKf }}
+        transition={{ opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 5 }}
+      />
+      {/* Loup */}
+      <motion.div
+        animate={{ left: wolfLeft, opacity: wolfOpacity }}
+        transition={{ left: { duration: 0.55, ease: 'easeIn' }, opacity: { duration: 0.3 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: '20vmin', height: '14vmin', transform: 'translateX(-50%)', filter: 'drop-shadow(0 3px 5px rgba(0,0,0,0.9))', zIndex: 6 }}
+      >
+        <WolfSilhouette />
+      </motion.div>
+
+      <AnimatePresence>
+        {flash && (
+          <motion.div key="flash" className="absolute inset-0 pointer-events-none" initial={{ opacity: 0 }} animate={{ opacity: [0, 0.4, 0] }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} style={{ background: 'rgba(160,10,10,0.6)' }} />
+        )}
+      </AnimatePresence>
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Cette forêt est glaciale. Pourquoi ce chemin ?" />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Chut… n'entends-tu pas quelque chose derrière toi ?" />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="La meute a fait le travail. Je n'ai qu'à repartir seul." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : ÉLECTROCUTION ===================
+// ============================================================
+function ElectrocutionScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  const [zap, setZap] = useState(false)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // victime entre dans la zone
+    at(9400, () => {
+      setStep(7); playBoom()
+      setZap(true); setTimeout(() => setZap(false), 900)
+    })
+    at(10500, () => setStep(8))
+    at(11200, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = step >= 6 ? '40%' : '24%'
+  const KILLER_X = '72%'
+
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimRotate  = step === 7 ? 10 : 0
+  const victimFilter  = step === 7 ? `${CUTOUT} hue-rotate(200deg) brightness(1.8)` : CUTOUT
+  const victimScale   = step >= 8 ? 0.7 : 1
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <LabBackdrop />
+      <motion.img src={victim.avatar} alt=""
+        animate={{ left: step >= 1 ? VICTIM_X : '-20%', opacity: victimOpacity, rotate: victimRotate, scale: victimScale }}
+        transition={{ left: { duration: 1.1, ease: 'easeInOut' }, opacity: { duration: 0.5 }, scale: { duration: 0.4 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: victimFilter, zIndex: 5, transition: 'filter 0.2s' }}
+      />
+      <motion.img src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: step >= 2 ? 1 : 0, scale: step === 10 ? [1, 1.08, 1, 1.08, 1] : 1 }}
+        transition={{ opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 5 }}
+      />
+
+      {/* Éclairs */}
+      <AnimatePresence>
+        {zap && (
+          <>
+            {[0, 1, 2].map((i) => (
+              <motion.div key={`bolt-${i}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0, 1, 0] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8, delay: i * 0.08 }}
+                style={{
+                  position: 'absolute',
+                  bottom: `calc(${CHAR_BOTTOM} + ${12 + i * 3}vmin)`,
+                  left: `calc(${VICTIM_X} + ${(i - 1) * 3}vmin)`,
+                  width: '3vmin', height: '18vmin',
+                  background: 'linear-gradient(180deg, rgba(200,230,255,0.95) 0%, rgba(120,180,255,0.6) 50%, transparent 100%)',
+                  filter: 'blur(1px)',
+                  boxShadow: '0 0 12px 4px rgba(150,200,255,0.8)',
+                  transform: 'translateX(-50%)',
+                  zIndex: 7,
+                }}
+              />
+            ))}
+            <motion.div key="flashE" className="absolute inset-0 pointer-events-none"
+              initial={{ opacity: 0 }} animate={{ opacity: [0, 0.6, 0.2, 0.5, 0] }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              style={{ background: 'rgba(140,200,255,0.5)' }}
+            />
+          </>
+        )}
+      </AnimatePresence>
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Ton laboratoire m'a toujours fasciné." />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Viens toucher cette pièce de métal, dis-moi ce que tu ressens." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="La science a parfois besoin de cobayes volontaires." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : FLÈCHE ==========================
+// ============================================================
+function Arrow() {
+  return (
+    <svg viewBox="0 0 80 10" className="w-full h-full">
+      <polygon points="0,5 16,0 14,5 16,10" fill="#c8a048" stroke="#6a4810" strokeWidth="0.4" />
+      <rect x="14" y="4" width="50" height="2" fill="#3a1e08" />
+      <polygon points="64,5 72,1 72,4 80,5 72,6 72,9" fill="#a8a8b0" stroke="#3a3a40" strokeWidth="0.4" />
+    </svg>
+  )
+}
+
+function ArrowScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // tension, silence
+    at(9400, () => { setStep(7); playThud() })  // FLÈCHE part et frappe
+    at(10400, () => setStep(8))
+    at(11200, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = '30%'
+  const KILLER_X = '72%'
+
+  const victimLeft = step >= 1 ? VICTIM_X : '-20%'
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimRotate  = step >= 7 ? 75 : 0
+  const victimScale   = step >= 7 ? 0.85 : 1
+
+  const arrowOpacity = step >= 7 && step < 8 ? 1 : 0
+  const arrowLeft    = step === 7 ? VICTIM_X : '110%'
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <ForestBackdrop />
+      <motion.img src={victim.avatar} alt=""
+        animate={{ left: victimLeft, opacity: victimOpacity, rotate: victimRotate, scale: victimScale }}
+        transition={{ left: { duration: 1.1, ease: 'easeOut' }, opacity: { duration: 0.5 }, rotate: { duration: 0.5 }, scale: { duration: 0.5 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+      />
+      <motion.img src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: step >= 2 ? 1 : 0, scale: step === 10 ? [1, 1.08, 1, 1.08, 1] : 1 }}
+        transition={{ opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 5 }}
+      />
+      {/* Flèche */}
+      <motion.div
+        animate={{ left: arrowLeft, opacity: arrowOpacity }}
+        transition={{ left: { duration: 0.25, ease: 'linear' }, opacity: { duration: 0.2 } }}
+        style={{ position: 'absolute', bottom: `calc(${CHAR_BOTTOM} + 14vmin)`, width: '16vmin', height: '2vmin', transform: 'translate(-50%, 50%)', zIndex: 7 }}
+      >
+        <Arrow />
+      </motion.div>
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Tu chasses encore à cette heure ? Quel courage." />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Ne bouge plus. Un daim vient de passer juste derrière toi." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Un bon archer ne rate jamais sa vraie cible." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : PIQUES DU SOL ===================
+// ============================================================
+function SpikeTrapScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))
+    at(9400, () => { setStep(7); playThud() })  // piques sortent
+    at(10500, () => setStep(8))
+    at(11200, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = step >= 4 ? '42%' : '24%'
+  const KILLER_X = '72%'
+
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimBottom  = step >= 7 ? 'calc(22% + 4vmin)' : CHAR_BOTTOM
+  const victimRotate  = step >= 7 ? 6 : 0
+  const victimScale   = step >= 8 ? 0.85 : 1
+
+  const spikeHeight = step >= 7 ? '10vmin' : '0vmin'
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <CryptBackdrop />
+      {/* Piques qui sortent du sol */}
+      <motion.div
+        animate={{ height: spikeHeight }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        style={{
+          position: 'absolute', bottom: '22%', left: '42%',
+          width: '16vmin',
+          transform: 'translateX(-50%)',
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          zIndex: 6,
+          overflow: 'hidden',
+        }}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} style={{
+            width: '2vmin', height: '100%',
+            clipPath: 'polygon(50% 0, 100% 100%, 0 100%)',
+            background: 'linear-gradient(180deg, #d8d0c8 0%, #6a5a48 70%, #2a1e14 100%)',
+            boxShadow: '0 0 3px rgba(0,0,0,0.7)',
+          }} />
+        ))}
+      </motion.div>
+
+      <motion.img src={victim.avatar} alt=""
+        animate={{ left: VICTIM_X, opacity: victimOpacity, bottom: victimBottom, rotate: victimRotate, scale: victimScale }}
+        transition={{ left: { duration: 1.1, ease: 'easeInOut' }, opacity: { duration: 0.5 }, bottom: { duration: 0.3 }, rotate: { duration: 0.3 }, scale: { duration: 0.4 } }}
+        style={{ position: 'absolute', width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+      />
+      <motion.img src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: step >= 2 ? 1 : 0, scale: step === 10 ? [1, 1.08, 1, 1.08, 1] : 1 }}
+        transition={{ opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 5 }}
+      />
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Le plan mène vraiment à cette crypte ?" />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Avance au centre de la salle, le coffre est juste là-dessous." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Le sol aussi rend ses hommages. Avec ses pointes." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : CHEMINÉE ========================
+// ============================================================
+function FireplaceScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  const [flames, setFlames] = useState(false)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // tueur s'approche
+    at(9400, () => {
+      setStep(7); playBoom()
+      setFlames(true); setTimeout(() => setFlames(false), 1200)
+    })
+    at(10700, () => setStep(8))
+    at(11400, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = step >= 7 ? '50%' : step >= 4 ? '42%' : '20%'
+  const KILLER_X = step >= 6 ? '60%' : '74%'
+
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimBottom  = step >= 7 ? 'calc(22% + 8vmin)' : CHAR_BOTTOM
+  const victimScale   = step >= 7 ? 0.55 : 1
+  const victimRotate  = step >= 7 ? -30 : 0
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <ParlorBackdrop />
+      <motion.img src={victim.avatar} alt=""
+        animate={{ left: VICTIM_X, opacity: victimOpacity, bottom: victimBottom, rotate: victimRotate, scale: victimScale }}
+        transition={{ left: { duration: 0.7, ease: 'easeInOut' }, opacity: { duration: 0.4 }, bottom: { duration: 0.4 }, rotate: { duration: 0.4 }, scale: { duration: 0.4 } }}
+        style={{ position: 'absolute', width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+      />
+      <motion.img src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: step >= 2 ? 1 : 0, scale: step === 10 ? [1, 1.08, 1, 1.08, 1] : 1 }}
+        transition={{ left: { duration: 0.7, ease: 'easeInOut' }, opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 6 }}
+      />
+
+      {/* Flammes qui jaillissent du foyer au step 7 */}
+      <AnimatePresence>
+        {flames && (
+          <motion.div key="flames"
+            initial={{ opacity: 0, scaleY: 0.4 }} animate={{ opacity: 1, scaleY: 1 }} exit={{ opacity: 0, scaleY: 0.6 }}
+            transition={{ duration: 0.5 }}
+            style={{
+              position: 'absolute', bottom: '30%', left: '50%', transform: 'translateX(-50%)',
+              width: '18vmin', height: '26vmin',
+              background: 'radial-gradient(ellipse at 50% 100%, #fff4a0 0%, #ff9020 40%, #c22810 75%, transparent 100%)',
+              borderRadius: '40% 40% 20% 20%',
+              filter: 'blur(2px)',
+              transformOrigin: '50% 100%',
+              zIndex: 5,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Ton manoir est magnifique. Merci de m'y recevoir." />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Approche du feu, tu grelottes. Juste un peu plus près…" />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Certains aiment le feu. D'autres y finissent." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : LUSTRE ==========================
+// ============================================================
+function Chandelier() {
+  return (
+    <svg viewBox="0 0 100 70" className="w-full h-full">
+      <defs>
+        <radialGradient id="chGold" cx="0.5" cy="0.3">
+          <stop offset="0%" stopColor="#ffec8a" />
+          <stop offset="100%" stopColor="#8a6818" />
+        </radialGradient>
+      </defs>
+      {/* anneau supérieur */}
+      <ellipse cx="50" cy="18" rx="30" ry="5" fill="none" stroke="url(#chGold)" strokeWidth="3" />
+      {/* anneau inférieur */}
+      <ellipse cx="50" cy="58" rx="42" ry="7" fill="none" stroke="url(#chGold)" strokeWidth="4" />
+      {/* branches verticales */}
+      <line x1="20" y1="20" x2="8" y2="58" stroke="url(#chGold)" strokeWidth="2.5" />
+      <line x1="50" y1="14" x2="50" y2="58" stroke="url(#chGold)" strokeWidth="2.5" />
+      <line x1="80" y1="20" x2="92" y2="58" stroke="url(#chGold)" strokeWidth="2.5" />
+      {/* bougies */}
+      {[8, 30, 50, 70, 92].map((x, i) => (
+        <g key={i}>
+          <rect x={x - 1.5} y="48" width="3" height="8" fill="#f8f4e2" />
+          <path d={`M ${x} 46 Q ${x - 1} 42 ${x} 38 Q ${x + 1} 42 ${x} 46`} fill="#ffb040" />
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function ChandelierScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  const [shake, setShake] = useState(false)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))   // victime avance sous lustre
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // tueur coupe corde
+    at(9200, () => {
+      setStep(7); playThud()
+      setShake(true); setTimeout(() => setShake(false), 500)
+    })
+    at(10400, () => setStep(8))
+    at(11200, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = step >= 4 ? '45%' : '22%'
+  const KILLER_X = '76%'
+
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimScale   = step >= 7 ? 0.6 : 1
+  const victimRotate  = step >= 7 ? -10 : 0
+
+  const chandelierTop = step >= 7 ? '70%' : '4%'
+  const chandelierRotate = step >= 7 ? 15 : 0
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <ParlorBackdrop />
+      <motion.div className="absolute inset-0" animate={shake ? { x: [0, -4, 4, -2, 0] } : { x: 0 }} transition={shake ? { duration: 0.4 } : { duration: 0 }}>
+        {/* Chaîne */}
+        <div style={{
+          position: 'absolute', top: 0, left: '45%', transform: 'translateX(-50%)',
+          width: '2px', height: step >= 7 ? '0' : '6%',
+          background: '#4a4030',
+          zIndex: 3,
+        }} />
+        {/* Chandelier */}
+        <motion.div
+          animate={{ top: chandelierTop, rotate: chandelierRotate }}
+          transition={{ top: { duration: 0.4, ease: 'easeIn' }, rotate: { duration: 0.4 } }}
+          style={{
+            position: 'absolute', left: '45%',
+            width: '22vmin', height: '16vmin',
+            transform: 'translateX(-50%)',
+            filter: 'drop-shadow(0 0 8px rgba(255,200,80,0.4))',
+            zIndex: 4,
+          }}
+        >
+          <Chandelier />
+        </motion.div>
+
+        <motion.img src={victim.avatar} alt=""
+          animate={{ left: VICTIM_X, opacity: victimOpacity, rotate: victimRotate, scale: victimScale }}
+          transition={{ left: { duration: 1, ease: 'easeInOut' }, opacity: { duration: 0.5 }, scale: { duration: 0.4 }, rotate: { duration: 0.4 } }}
+          style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+        />
+        <motion.img src={killer.avatar} alt=""
+          animate={{ left: KILLER_X, opacity: step >= 2 ? 1 : 0, scale: step === 10 ? [1, 1.08, 1, 1.08, 1] : 1 }}
+          transition={{ opacity: { duration: 0.7 }, scale: { duration: 0.6, repeat: step === 10 ? 2 : 0 } }}
+          style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 5 }}
+        />
+      </motion.div>
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="C'est la première fois que je vois ton grand salon." />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Place-toi au centre, je veux prendre ta mesure." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Le luxe est lourd. Surtout quand il tombe sur la tête." />
+    </motion.div>
+  )
+}
+
+// ============================================================
+// ================= SCÈNE : PUITS SANS FOND =================
+// ============================================================
+function WellScene({ victim, killer }) {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = []
+    const at = (ms, fn) => t.push(setTimeout(fn, ms))
+    at(300, () => setStep(1))
+    at(1400, () => setStep(2))
+    at(2400, () => setStep(3))
+    at(5400, () => setStep(4))   // s'approchent du puits
+    at(6500, () => setStep(5))
+    at(8800, () => setStep(6))   // tueur prend élan
+    at(9300, () => { setStep(7); playThud() })  // poussée dans le puits
+    at(10200, () => playThud())  // impact lointain
+    at(11000, () => setStep(8))
+    at(11600, () => setStep(9))
+    at(12800, () => { setStep(10); playEvilLaugh() })
+    return () => t.forEach(clearTimeout)
+  }, [])
+
+  const CHAR_W = '26vmin'
+  const CHAR_BOTTOM = '22%'
+  const VICTIM_X = step >= 4 ? '45%' : '22%'
+  const KILLER_X = step >= 6 ? '58%' : step >= 4 ? '60%' : '76%'
+
+  const victimOpacity = step === 0 ? 0 : (step >= 8 ? 0 : 1)
+  const victimBottom = step >= 7 ? '-10%' : CHAR_BOTTOM
+  const victimScale  = step >= 7 ? 0.3 : 1
+  const victimRotate = step >= 7 ? 180 : 0
+
+  return (
+    <motion.div className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }}>
+      <CourtyardBackdrop />
+
+      {/* Puits : base circulaire */}
+      <div className="absolute" style={{
+        bottom: '19%', left: '45%', transform: 'translateX(-50%)',
+        width: '22vmin', height: '7vmin',
+        background: 'radial-gradient(ellipse, #3a2e24 0%, #1a120a 70%, #0a0604 100%)',
+        borderRadius: '50% / 50%',
+        border: '2px solid #1a120a',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.7)',
+        zIndex: 3,
+      }} />
+      {/* Ouverture noire du puits */}
+      <div className="absolute" style={{
+        bottom: '22%', left: '45%', transform: 'translateX(-50%)',
+        width: '18vmin', height: '5vmin',
+        borderRadius: '50%',
+        background: 'radial-gradient(ellipse, #000 0%, #000 65%, rgba(0,0,0,0.6) 100%)',
+        boxShadow: 'inset 0 4px 10px rgba(0,0,0,0.95)',
+        zIndex: 4,
+      }} />
+      {/* Arc de fer au-dessus du puits */}
+      <svg className="absolute" style={{ bottom: '26%', left: '45%', transform: 'translateX(-50%)', width: '20vmin', height: '12vmin' }} viewBox="0 0 100 60">
+        <path d="M 10 60 Q 50 0 90 60" stroke="#3a3a40" strokeWidth="3" fill="none" />
+        <rect x="48" y="5" width="4" height="25" fill="#3a3a40" />
+      </svg>
+
+      <motion.img src={victim.avatar} alt=""
+        animate={{ left: VICTIM_X, opacity: victimOpacity, bottom: victimBottom, rotate: victimRotate, scale: victimScale }}
+        transition={{ left: { duration: 1.1, ease: 'easeInOut' }, opacity: { duration: 0.5 }, bottom: { duration: 0.9, ease: 'easeIn' }, rotate: { duration: 0.9 }, scale: { duration: 0.9 } }}
+        style={{ position: 'absolute', width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%)', filter: CUTOUT, zIndex: 5 }}
+      />
+      <motion.img src={killer.avatar} alt=""
+        animate={{ left: KILLER_X, opacity: step >= 2 ? 1 : 0, scale: step === 10 ? [1, 1.08, 1, 1.08, 1] : step === 7 ? 1.1 : 1 }}
+        transition={{ left: { duration: 0.8, ease: 'easeInOut' }, opacity: { duration: 0.7 }, scale: { duration: 0.4, repeat: step === 10 ? 2 : 0 } }}
+        style={{ position: 'absolute', bottom: CHAR_BOTTOM, width: CHAR_W, height: CHAR_W, objectFit: 'contain', transform: 'translateX(-50%) scaleX(-1)', filter: CUTOUT, zIndex: 6 }}
+      />
+
+      <Subtitle show={step === 3} speaker={victim.name}
+        text="Ce puits est vieux de combien de siècles ?" />
+      <Subtitle show={step === 4 || step === 5} speaker={killer.name}
+        text="Penche-toi au bord. Il y a une pièce d'or, tout au fond." />
+      <Subtitle show={step >= 9} speaker={killer.name}
+        text="Un puits aime les secrets. Surtout ceux qui crient." />
     </motion.div>
   )
 }

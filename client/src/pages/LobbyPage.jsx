@@ -42,17 +42,22 @@ export default function LobbyPage() {
   }
 
   function handlePreviewFinale() {
-    // Raccourci pour voir directement le mini-film final (dev/test) — 7 joueurs = 6 actes différents
+    // Raccourci pour voir directement le mini-film final (dev/test)
+    // 11 joueurs = 10 actes = 10 scènes différentes (tirées au sort dans les 16 dispo)
     const fake = [
-      { id: 'f1', name: 'Alice',   avatar: '/avatars/selected/CS_02_Red_Raddy.svg',    score: 2,  finalScore: 2  },
-      { id: 'f2', name: 'Bruno',   avatar: '/avatars/selected/CS_17_White_Wenda.svg',  score: 4,  finalScore: 4  },
-      { id: 'f3', name: 'Camille', avatar: '/avatars/selected/CS_18_Pink_Pinki.svg',   score: 6,  finalScore: 6  },
-      { id: 'f4', name: 'Dimitri', avatar: '/avatars/selected/CS_20_Black_Black.svg',  score: 8,  finalScore: 8  },
-      { id: 'f5', name: 'Elsa',    avatar: '/avatars/selected/CS_14_Yellow_Simon.svg', score: 10, finalScore: 10 },
-      { id: 'f6', name: 'François',avatar: '/avatars/selected/P3_09_Lime_OWAKCX.svg',  score: 12, finalScore: 12 },
-      { id: 'f7', name: 'Gabrielle',avatar:'/avatars/selected/P3_10_Sky_blue_Sky.svg', score: 15, finalScore: 15 },
+      { id: 'f01', name: 'Alice',    avatar: '/avatars/selected/CS_02_Red_Raddy.svg',       score: 1,  finalScore: 1  },
+      { id: 'f02', name: 'Bruno',    avatar: '/avatars/selected/CS_17_White_Wenda.svg',     score: 3,  finalScore: 3  },
+      { id: 'f03', name: 'Camille',  avatar: '/avatars/selected/CS_18_Pink_Pinki.svg',      score: 5,  finalScore: 5  },
+      { id: 'f04', name: 'Dimitri',  avatar: '/avatars/selected/CS_20_Black_Black.svg',     score: 7,  finalScore: 7  },
+      { id: 'f05', name: 'Elsa',     avatar: '/avatars/selected/CS_14_Yellow_Simon.svg',    score: 9,  finalScore: 9  },
+      { id: 'f06', name: 'François', avatar: '/avatars/selected/P3_09_Lime_OWAKCX.svg',     score: 11, finalScore: 11 },
+      { id: 'f07', name: 'Gabrielle',avatar: '/avatars/selected/P3_10_Sky_blue_Sky.svg',    score: 13, finalScore: 13 },
+      { id: 'f08', name: 'Henri',    avatar: '/avatars/selected/P3_06_Gray_Gray.svg',       score: 15, finalScore: 15 },
+      { id: 'f09', name: 'Iris',     avatar: '/avatars/selected/P3_17_White_Wenda.svg',     score: 17, finalScore: 17 },
+      { id: 'f10', name: 'Julien',   avatar: '/avatars/selected/CS_15_Tan_Tunner.svg',      score: 19, finalScore: 19 },
+      { id: 'f11', name: 'Karine',   avatar: '/avatars/selected/P3_18_Pink_Pinki.svg',      score: 22, finalScore: 22 },
     ]
-    setPlayer('f1', 'Alice')
+    setPlayer('f01', 'Alice')
     updateGame({ phase: 'final', players: fake, roomCode: 'TEST', totalPlayers: fake.length })
   }
 

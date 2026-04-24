@@ -28,7 +28,7 @@ export default function FinalPage() {
   useEffect(() => {
     if (!cinemaDone) return
     if (revealIndex >= sorted.length - 1) return
-    const timeout = setTimeout(() => setRevealIndex((i) => i + 1), revealIndex === -1 ? 1000 : 2500)
+    const timeout = setTimeout(() => setRevealIndex((i) => i + 1), revealIndex === -1 ? 400 : 900)
     return () => clearTimeout(timeout)
   }, [revealIndex, sorted.length, cinemaDone])
 

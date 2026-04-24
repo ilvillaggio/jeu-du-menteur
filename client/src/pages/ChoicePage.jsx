@@ -11,39 +11,44 @@ import Avatar from '../components/Avatar'
 
 const ACTIONS = [
   {
+    id: 'profiter',
+    label: 'Profiter',
+    icon: '😏',
+    desc: 'Tu joues seul. Gain garanti, sans surprise.',
+    payoff: '+30',
+    sub: 'garanti',
+    idle: 'border-gold/40 bg-surface',
+    active: 'border-gold-light bg-gold/20',
+  },
+  {
     id: 'cooperer',
     label: 'Coopérer',
     icon: '🤝',
     desc: 'Tu joues honnêtement avec tes partenaires.',
+    payoff: '+40',
+    sub: 'si TOUT le pacte coopère. Si ≥ 2 trahissent, tu rafles leur butin (80 par traître).',
     idle: 'border-teal/40 bg-surface',
     active: 'border-teal-light bg-teal/20',
-  },
-  {
-    id: 'profiter',
-    label: 'Profiter',
-    icon: '😏',
-    desc: 'Tu prends plus que ta part sans tout trahir.',
-    idle: 'border-gold/40 bg-surface',
-    active: 'border-gold-light bg-gold/20',
   },
   {
     id: 'trahir',
     label: 'Trahir',
     icon: '🗡️',
     desc: 'Tu retournes contre tes partenaires. Risqué.',
+    payoff: '+80 / −80',
+    sub: 'seul à trahir dans ton pacte, sinon −80 pour tous les traîtres',
     idle: 'border-crimson/40 bg-surface',
     active: 'border-crimson-light bg-crimson/20',
   },
 ]
 
-const MISES = [10, 20, 30, 50]
-
 export default function ChoicePage() {
-  const { players, playerId, round, isActive, myValidPartners, myMissions } = useGame()
+  const { players, playerId, round, totalRounds, isActive, myValidPartners, myMissions } = useGame()
   const { socket } = useSocket()
 
+  const isFinalRound = round === (totalRounds || 5)
+
   const [action, setAction] = useState(null)
-  const [mise, setMise] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [whispersOpen, setWhispersOpen] = useState(false)
@@ -53,12 +58,12 @@ export default function ChoicePage() {
   const completedMissions = myMissions.filter((m) => m.completed).length
 
   function submit() {
-    if (!action || !mise || !isActive) return
-    socket.emit('player:choice', { action, mise })
+    if (!action || !isActive) return
+    socket.emit('player:choice', { action, mise: 0 })
     setSubmitted(true)
   }
 
-  const canSubmit = action && mise && !submitted && isActive
+  const canSubmit = action && !submitted && isActive
 
   // Hors-jeu ce tour
   if (!isActive) {
@@ -140,44 +145,39 @@ export default function ChoicePage() {
 
             {/* Action */}
             <section>
-              <p className="text-xs text-muted uppercase tracking-widest mb-3">Ton action</p>
-              <div className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between mb-3">
+                <p className="text-xs text-muted uppercase tracking-widest">Ton action</p>
+                {isFinalRound && (
+                  <p className="text-[10px] font-bold text-crimson-light uppercase tracking-widest">
+                    Dernière manche — gains ×2
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-3">
                 {ACTIONS.map((a) => (
                   <button
                     key={a.id}
                     onClick={() => setAction(a.id)}
-                    className={`w-full text-left px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors duration-150 min-h-[68px] ${
+                    className={`w-full text-left px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors duration-150 min-h-[80px] ${
                       action === a.id ? a.active : a.idle
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl leading-none">{a.icon}</span>
-                      <div>
-                        <p className="font-bold text-white text-base leading-tight">{a.label}</p>
-                        <p className="text-xs text-muted mt-0.5">{a.desc}</p>
+                      <span className="text-3xl leading-none shrink-0">{a.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-white text-base leading-tight">{a.label}</p>
+                          <span className={`text-base font-bold ${
+                            a.id === 'trahir' ? 'text-crimson-light'
+                            : a.id === 'cooperer' ? 'text-teal-light'
+                            : 'text-gold-light'
+                          }`}>{a.payoff}</span>
+                        </div>
+                        <p className="text-xs text-muted mt-0.5">{a.sub}</p>
+                        <p className="text-[11px] text-muted/80 mt-0.5 italic">{a.desc}</p>
                       </div>
-                      {action === a.id && <span className="ml-auto text-lg">✓</span>}
+                      {action === a.id && <span className="ml-auto text-lg shrink-0">✓</span>}
                     </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* Mise */}
-            <section>
-              <p className="text-xs text-muted uppercase tracking-widest mb-3">Mise (points)</p>
-              <div className="grid grid-cols-4 gap-2">
-                {MISES.map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setMise(m)}
-                    className={`py-4 rounded-2xl border-2 font-bold text-lg touch-manipulation transition-colors min-h-[56px] ${
-                      mise === m
-                        ? 'border-gold bg-gold/10 text-gold-light'
-                        : 'border-border bg-surface text-muted'
-                    }`}
-                  >
-                    {m}
                   </button>
                 ))}
               </div>

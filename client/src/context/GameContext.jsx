@@ -21,6 +21,7 @@ const initialState = {
   votesCount: 0,
   teamVotesCount: 0,
   totalPlayers: 0,
+  totalRounds: 5,
   intermissionEndsAt: null,
   // Team selection
   teamReveal: null,       // { pacts: [{id,name,avatar,valid}], isActive }

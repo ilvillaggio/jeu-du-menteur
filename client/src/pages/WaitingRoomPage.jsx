@@ -5,13 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 
-const COUNTS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+const COUNTS  = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+const ROUNDS  = [3, 5, 7, 9, 12]
 
 export default function WaitingRoomPage() {
-  const { players, roomCode, playerId, totalPlayers, reset, updateGame } = useGame()
+  const { players, roomCode, playerId, totalPlayers, totalRounds, reset, updateGame } = useGame()
   const { socket } = useSocket()
 
-  const [editingCount, setEditingCount] = useState(false)
+  const [editingCount, setEditingCount]   = useState(false)
+  const [editingRounds, setEditingRounds] = useState(false)
   const [startError, setStartError] = useState('')
   const [avatarOpen, setAvatarOpen] = useState(false)
 
@@ -42,6 +44,11 @@ export default function WaitingRoomPage() {
   function changeCount(n) {
     socket.emit('room:update', { playerCount: n })
     setEditingCount(false)
+  }
+
+  function changeRounds(n) {
+    socket.emit('room:update', { totalRounds: n })
+    setEditingRounds(false)
   }
 
   return (
@@ -84,6 +91,49 @@ export default function WaitingRoomPage() {
                     onClick={() => changeCount(n)}
                     className={`w-12 h-12 rounded-xl border-2 font-bold text-sm touch-manipulation transition-colors ${
                       n === totalPlayers
+                        ? 'border-gold bg-gold/10 text-gold-light'
+                        : 'border-border bg-surface text-muted'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Rounds info + edit */}
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <p className="text-subtle text-sm">
+            {totalRounds || 5} manches
+          </p>
+          {isHost && (
+            <button
+              onClick={() => setEditingRounds((v) => !v)}
+              className="text-xs text-gold underline touch-manipulation"
+            >
+              {editingRounds ? 'Annuler' : 'Modifier'}
+            </button>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {editingRounds && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mt-3"
+            >
+              <p className="text-xs text-muted mb-2">Combien de manches ?</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {ROUNDS.map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => changeRounds(n)}
+                    className={`w-12 h-12 rounded-xl border-2 font-bold text-sm touch-manipulation transition-colors ${
+                      n === totalRounds
                         ? 'border-gold bg-gold/10 text-gold-light'
                         : 'border-border bg-surface text-muted'
                     }`}

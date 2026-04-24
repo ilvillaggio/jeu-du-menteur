@@ -10,15 +10,16 @@ export default function LobbyPage() {
   const [name, setName] = useState('')
   const [roomCode, setRoomCode] = useState('')
   const [playerCount, setPlayerCount] = useState(6)
+  const [roundsCount, setRoundsCount] = useState(5)
   const [mode, setMode] = useState('create') // create | join
   const [error, setError] = useState('')
 
   function handleCreate() {
     if (!name.trim()) return setError('Entre ton prénom')
     setPlayer(socket.id, name.trim())
-    socket.emit('room:create', { name: name.trim(), playerCount }, (res) => {
+    socket.emit('room:create', { name: name.trim(), playerCount, totalRounds: roundsCount }, (res) => {
       if (res.error) return setError(res.error)
-      updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode, totalPlayers: res.totalPlayers })
+      updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode, totalPlayers: res.totalPlayers, totalRounds: res.totalRounds })
     })
   }
 
@@ -35,9 +36,9 @@ export default function LobbyPage() {
   function handleCreateTest() {
     if (!name.trim()) return setError('Entre ton prénom')
     setPlayer(socket.id, name.trim())
-    socket.emit('room:create_test', { name: name.trim(), playerCount }, (res) => {
+    socket.emit('room:create_test', { name: name.trim(), playerCount, totalRounds: roundsCount }, (res) => {
       if (res.error) return setError(res.error)
-      updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode, totalPlayers: res.totalPlayers })
+      updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode, totalPlayers: res.totalPlayers, totalRounds: res.totalRounds })
     })
   }
 
@@ -116,6 +117,29 @@ export default function LobbyPage() {
                     onClick={() => setPlayerCount(n)}
                     className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
                       playerCount === n
+                        ? 'bg-gold text-noir border-gold'
+                        : 'border-border text-muted hover:border-subtle'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mode === 'create' && (
+            <div>
+              <label className="text-xs text-muted uppercase tracking-wide mb-1 block">
+                Nombre de manches
+              </label>
+              <div className="flex gap-2">
+                {[3, 5, 7, 9, 12].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setRoundsCount(n)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
+                      roundsCount === n
                         ? 'bg-gold text-noir border-gold'
                         : 'border-border text-muted hover:border-subtle'
                     }`}

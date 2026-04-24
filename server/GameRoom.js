@@ -2,7 +2,7 @@ const MISSIONS = require('./missions')
 
 const INTERMISSION_MS = 30 * 60 * 1000 // 30 min
 const TEST_INTERMISSION_MS = 5000 // 5s en mode test
-const TOTAL_ROUNDS = 5
+const DEFAULT_TOTAL_ROUNDS = 5
 const TEAM_REVEAL_DELAY_MS = 8000 // 8s pour lire les pactes avant action
 const BOT_NAMES = ['Alice', 'Bob', 'Claire', 'David', 'Emma', 'Franck', 'Greg', 'Hugo', 'Inès', 'Julie']
 
@@ -27,9 +27,10 @@ const AVATAR_POOL = [
 ]
 
 class GameRoom {
-  constructor(code, playerCount, io, testMode = false) {
+  constructor(code, playerCount, io, testMode = false, totalRounds = DEFAULT_TOTAL_ROUNDS) {
     this.code = code
     this.playerCount = playerCount
+    this.totalRounds = totalRounds
     this.io = io
     this.testMode = testMode
     this.players = []
@@ -287,23 +288,45 @@ class GameRoom {
       const choice = this.choices.get(p.id) || { action: 'cooperer', mise: 10 }
       let delta = 0
 
+      // ===== Payoffs par action =====
+      // Profiter  : +30 garanti, ne participe à rien d'autre
+      // Coopérer  : +40 si TOUT le pacte coopère (pas de traître, pas de profiteur)
+      //             Si ≥ 2 traîtres : le coopérateur RAMASSE le butin (80 × nbTraîtres)
+      //             partagé entre tous les coopérateurs du pacte
+      //             Sinon : 0
+      // Trahir    : +80 si seul à trahir dans le pacte, sinon -80 (pénalité)
+      // Dernière manche : tous les gains/pertes sont doublés
+
+      // Compteurs d'actions dans le pacte du joueur (inclut le joueur lui-même)
+      const pactMembers = [p.id, ...validPartners]
+      let nbCoop = 0, nbTrahir = 0, nbProfit = 0
+      pactMembers.forEach((pid) => {
+        const a = (pid === p.id ? choice : this.choices.get(pid))?.action
+        if (a === 'cooperer') nbCoop++
+        else if (a === 'trahir') nbTrahir++
+        else if (a === 'profiter') nbProfit++
+      })
+
       if (choice.action === 'cooperer') {
-        // Coopération réussie seulement si TOUS les partenaires ont aussi coopéré
-        const allCooperated = validPartners.every((pid) => {
-          const c = this.choices.get(pid)
-          return c && c.action === 'cooperer'
-        })
-        delta = allCooperated ? Math.floor(choice.mise * 1.5) : 0
+        if (nbTrahir === 0 && nbProfit === 0) {
+          // Tout le pacte coopère : gain collectif
+          delta = 40
+        } else if (nbTrahir >= 2 && nbCoop > 0) {
+          // Au moins 2 traîtres : leur butin est partagé entre les coopérateurs
+          delta = Math.floor((80 * nbTrahir) / nbCoop)
+        } else {
+          // Un seul traître (qui empoche +80), ou au moins un profiteur : la coop échoue
+          delta = 0
+        }
       } else if (choice.action === 'profiter') {
-        // Profiter rapporte TOUJOURS des points (mise × 1.5)
-        delta = Math.floor(choice.mise * 1.5)
+        delta = 30
       } else if (choice.action === 'trahir') {
-        // Trahison réussie sauf si un partenaire a aussi trahi (= annulation mutuelle)
-        const anyAlsoBetrayed = validPartners.some((pid) => {
-          const c = this.choices.get(pid)
-          return c && c.action === 'trahir'
-        })
-        delta = anyAlsoBetrayed ? -choice.mise * 2 : choice.mise * 2
+        delta = nbTrahir === 1 ? 80 : -80
+      }
+
+      // Double enjeu à la dernière manche
+      if (this.round === this.totalRounds) {
+        delta = delta * 2
       }
 
       p.score += delta
@@ -360,7 +383,7 @@ class GameRoom {
 
     if (ackCount >= this.players.length) {
       setTimeout(() => {
-        if (this.round >= TOTAL_ROUNDS) this._startFinal()
+        if (this.round >= this.totalRounds) this._startFinal()
         else this._startIntermission()
       }, 500)
     }
@@ -393,8 +416,8 @@ class GameRoom {
             if (this.round === 1 && lastEntry.action === 'cooperer') m.completed = true
             break
           }
-          case 'e3': { // Termine une manche avec une mise de 50
-            if (lastEntry.mise === 50) m.completed = true
+          case 'e3': { // Réussis une trahison (sans double trahison)
+            if (lastEntry.action === 'trahir' && lastEntry.delta > 0) m.completed = true
             break
           }
           case 'e4': { // Choisis "Profiter" au moins une fois
@@ -425,7 +448,7 @@ class GameRoom {
             break
           }
           case 'e8': { // Coopère lors de la dernière manche
-            if (this.round === TOTAL_ROUNDS && lastEntry.action === 'cooperer') m.completed = true
+            if (this.round === this.totalRounds && lastEntry.action === 'cooperer') m.completed = true
             break
           }
           case 'h1': { // Trahis un joueur qui t'a choisi comme partenaire
@@ -454,7 +477,7 @@ class GameRoom {
             break
           }
           case 'h4': { // Termine la partie avec exactement 0 trahisons
-            if (this.round === TOTAL_ROUNDS) {
+            if (this.round === this.totalRounds) {
               const neverBetrayed = hist.every((h) => h.action !== 'trahir')
               if (neverBetrayed) m.completed = true
             }
@@ -465,7 +488,7 @@ class GameRoom {
             break
           }
           case 'h6': { // Choisis les mêmes partenaires toute la partie
-            if (this.round === TOTAL_ROUNDS && hist.length >= 2) {
+            if (this.round === this.totalRounds && hist.length >= 2) {
               const firstPartners = hist[0].partners
               const alwaysSame = hist.every((h) =>
                 h.partners.length === firstPartners.length &&
@@ -476,7 +499,7 @@ class GameRoom {
             break
           }
           case 'h7': { // Finis dans le top 2 final
-            if (this.round === TOTAL_ROUNDS) {
+            if (this.round === this.totalRounds) {
               const rank = sortedByScore.findIndex((x) => x.id === p.id)
               if (rank < 2) m.completed = true
             }
@@ -568,9 +591,7 @@ class GameRoom {
           if (this.phase !== 'choice') return
           const actions = ['cooperer', 'cooperer', 'trahir', 'profiter']
           const action = actions[Math.floor(Math.random() * actions.length)]
-          const mises = [10, 20, 30, 40, 50]
-          const mise = mises[Math.floor(Math.random() * mises.length)]
-          this.registerChoice(bot.id, { action, mise })
+          this.registerChoice(bot.id, { action, mise: 0 })
         }, delay)
       }
     })
@@ -600,6 +621,7 @@ class GameRoom {
     return {
       phase: this.phase, round: this.round,
       players: this.publicPlayers(), totalPlayers: this.playerCount,
+      totalRounds: this.totalRounds,
       votesCount: this.choices.size,
       teamVotesCount: this.teamChoices.size,
     }

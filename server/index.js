@@ -20,26 +20,26 @@ io.on('connection', (socket) => {
   console.log(`[+] ${socket.id} connected`)
 
   // ─── Create room ───
-  socket.on('room:create', ({ name, playerCount }, cb) => {
+  socket.on('room:create', ({ name, playerCount, totalRounds }, cb) => {
     let code
     do { code = generateCode() } while (rooms.has(code))
 
-    const room = new GameRoom(code, playerCount, io)
+    const room = new GameRoom(code, playerCount, io, false, totalRounds)
     rooms.set(code, room)
 
     room.addPlayer(socket, name)
     socket.join(code)
     socket.data.roomCode = code
 
-    cb({ roomCode: code, players: room.publicPlayers(), totalPlayers: room.playerCount })
+    cb({ roomCode: code, players: room.publicPlayers(), totalPlayers: room.playerCount, totalRounds: room.totalRounds })
   })
 
   // ─── Create test room (solo avec bots) ───
-  socket.on('room:create_test', ({ name, playerCount }, cb) => {
+  socket.on('room:create_test', ({ name, playerCount, totalRounds }, cb) => {
     let code
     do { code = generateCode() } while (rooms.has(code))
 
-    const room = new GameRoom(code, playerCount, io, true /* testMode */)
+    const room = new GameRoom(code, playerCount, io, true /* testMode */, totalRounds)
     rooms.set(code, room)
 
     room.addPlayer(socket, name)
@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
       room.addBot()
     }
 
-    cb({ roomCode: code, players: room.publicPlayers(), totalPlayers: room.playerCount })
+    cb({ roomCode: code, players: room.publicPlayers(), totalPlayers: room.playerCount, totalRounds: room.totalRounds })
   })
 
   // ─── Join room ───
@@ -106,14 +106,21 @@ io.on('connection', (socket) => {
     cb({ ok: true })
   })
 
-  // ─── Update player count (host only) ───
-  socket.on('room:update', ({ playerCount }, cb = () => {}) => {
+  // ─── Update player count / rounds (host only) ───
+  socket.on('room:update', ({ playerCount, totalRounds }, cb = () => {}) => {
     const room = rooms.get(socket.data.roomCode)
     if (!room) return cb({ error: 'Salle introuvable' })
     if (room.players[0]?.id !== socket.id) return cb({ error: 'Seul l\'hôte peut modifier' })
-    if (playerCount < 2 || playerCount > 12) return cb({ error: 'Nombre invalide' })
 
-    room.playerCount = playerCount
+    if (playerCount !== undefined) {
+      if (playerCount < 2 || playerCount > 12) return cb({ error: 'Nombre de joueurs invalide' })
+      room.playerCount = playerCount
+    }
+    if (totalRounds !== undefined) {
+      if (totalRounds < 3 || totalRounds > 12) return cb({ error: 'Nombre de manches invalide' })
+      room.totalRounds = totalRounds
+    }
+
     io.to(room.code).emit('game:state', room.stateForAll())
     cb({ ok: true })
   })

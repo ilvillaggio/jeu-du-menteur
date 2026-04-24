@@ -3,7 +3,7 @@ module.exports = [
   // Easy
   { id: 'e1', description: "Coopère avec le même joueur deux manches de suite.", difficulty: 'easy' },
   { id: 'e2', description: "Coopère lors de la première manche.", difficulty: 'easy' },
-  { id: 'e3', description: "Termine une manche avec une mise de 50.", difficulty: 'easy' },
+  { id: 'e3', description: "Réussis une trahison (sans double trahison).", difficulty: 'easy' },
   { id: 'e4', description: 'Choisis "Profiter" au moins une fois dans la partie.', difficulty: 'easy' },
   { id: 'e5', description: "Sois le premier à voter lors d'une manche.", difficulty: 'easy' },
   { id: 'e6', description: "Joue avec les mêmes partenaires deux fois consécutives.", difficulty: 'easy' },

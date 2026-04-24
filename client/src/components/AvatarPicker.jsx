@@ -90,8 +90,11 @@ export default function AvatarPicker({ open, onClose }) {
                       <img
                         src={path}
                         alt={a.name}
-                        className="w-20 h-20 rounded-2xl object-contain ring-1 ring-gold/40 shadow-lg shadow-black/30"
-                        style={{ background: 'radial-gradient(circle at 50% 35%, #f5e4bc 0%, #d4a43d 60%, #8a6a1f 100%)' }}
+                        className="w-20 h-20 object-contain"
+                        style={{
+                          filter:
+                            'drop-shadow(0 0 2px rgba(255,255,255,0.9)) drop-shadow(0 0 4px rgba(255,255,255,0.5)) drop-shadow(0 8px 14px rgba(0,0,0,0.85)) drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
+                        }}
                       />
                       <span className={`text-xs font-semibold ${isMine ? 'text-gold-light' : 'text-muted'}`}>
                         {a.name}

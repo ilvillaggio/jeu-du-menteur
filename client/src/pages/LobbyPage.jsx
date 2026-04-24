@@ -41,6 +41,21 @@ export default function LobbyPage() {
     })
   }
 
+  function handlePreviewFinale() {
+    // Raccourci pour voir directement le mini-film final (dev/test) — 7 joueurs = 6 actes différents
+    const fake = [
+      { id: 'f1', name: 'Alice',   avatar: '/avatars/selected/CS_02_Red_Raddy.svg',    score: 2,  finalScore: 2  },
+      { id: 'f2', name: 'Bruno',   avatar: '/avatars/selected/CS_17_White_Wenda.svg',  score: 4,  finalScore: 4  },
+      { id: 'f3', name: 'Camille', avatar: '/avatars/selected/CS_18_Pink_Pinki.svg',   score: 6,  finalScore: 6  },
+      { id: 'f4', name: 'Dimitri', avatar: '/avatars/selected/CS_20_Black_Black.svg',  score: 8,  finalScore: 8  },
+      { id: 'f5', name: 'Elsa',    avatar: '/avatars/selected/CS_14_Yellow_Simon.svg', score: 10, finalScore: 10 },
+      { id: 'f6', name: 'François',avatar: '/avatars/selected/P3_09_Lime_OWAKCX.svg',  score: 12, finalScore: 12 },
+      { id: 'f7', name: 'Gabrielle',avatar:'/avatars/selected/P3_10_Sky_blue_Sky.svg', score: 15, finalScore: 15 },
+    ]
+    setPlayer('f1', 'Alice')
+    updateGame({ phase: 'final', players: fake, roomCode: 'TEST', totalPlayers: fake.length })
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6">
       <motion.div
@@ -136,6 +151,15 @@ export default function LobbyPage() {
               className="w-full py-2 text-sm text-muted hover:text-subtle border border-border rounded-lg transition-all"
             >
               🧪 Mode test solo (avec bots)
+            </button>
+          )}
+
+          {mode === 'create' && (
+            <button
+              onClick={handlePreviewFinale}
+              className="w-full py-2 text-sm text-gold-light/80 hover:text-gold border border-gold/30 rounded-lg transition-all"
+            >
+              🎬 Prévisualiser le film final
             </button>
           )}
         </div>

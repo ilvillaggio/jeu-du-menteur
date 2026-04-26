@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSocket } from '../context/SocketContext'
 import { useGame } from '../context/GameContext'
+import { getOrCreateToken, saveSession } from '../lib/session'
 
 export default function LobbyPage() {
   const { socket } = useSocket()
   const { setPlayer, updateGame } = useGame()
+  const token = getOrCreateToken()
 
   const [name, setName] = useState('')
   const [roomCode, setRoomCode] = useState('')
@@ -17,8 +19,9 @@ export default function LobbyPage() {
   function handleCreate() {
     if (!name.trim()) return setError('Entre ton prénom')
     setPlayer(socket.id, name.trim())
-    socket.emit('room:create', { name: name.trim(), playerCount, totalRounds: roundsCount }, (res) => {
+    socket.emit('room:create', { name: name.trim(), playerCount, totalRounds: roundsCount, token }, (res) => {
       if (res.error) return setError(res.error)
+      saveSession({ roomCode: res.roomCode, playerName: name.trim() })
       updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode, totalPlayers: res.totalPlayers, totalRounds: res.totalRounds })
     })
   }
@@ -27,8 +30,9 @@ export default function LobbyPage() {
     if (!name.trim()) return setError('Entre ton prénom')
     if (!roomCode.trim()) return setError('Entre le code de la salle')
     setPlayer(socket.id, name.trim())
-    socket.emit('room:join', { name: name.trim(), code: roomCode.trim().toUpperCase() }, (res) => {
+    socket.emit('room:join', { name: name.trim(), code: roomCode.trim().toUpperCase(), token }, (res) => {
       if (res.error) return setError(res.error)
+      saveSession({ roomCode: res.roomCode, playerName: name.trim() })
       updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode })
     })
   }
@@ -36,8 +40,9 @@ export default function LobbyPage() {
   function handleCreateTest() {
     if (!name.trim()) return setError('Entre ton prénom')
     setPlayer(socket.id, name.trim())
-    socket.emit('room:create_test', { name: name.trim(), playerCount, totalRounds: roundsCount }, (res) => {
+    socket.emit('room:create_test', { name: name.trim(), playerCount, totalRounds: roundsCount, token }, (res) => {
       if (res.error) return setError(res.error)
+      saveSession({ roomCode: res.roomCode, playerName: name.trim() })
       updateGame({ phase: 'waiting', players: res.players, roomCode: res.roomCode, totalPlayers: res.totalPlayers, totalRounds: res.totalRounds })
     })
   }

@@ -53,14 +53,34 @@ class GameRoom {
     return available[Math.floor(Math.random() * available.length)]
   }
 
-  addPlayer(socket, name) {
+  addPlayer(socket, name, token = null) {
     this.players.push({
       id: socket.id, name, avatar: this._pickRandomAvatar('🎭'), role: null,
       score: 0, missionScore: 0, ready: false, voted: false,
       teamSubmitted: false, missionAcknowledged: false, missions: [],
       isBot: false,
+      token, // identifiant stable côté client (localStorage), pour reconnexion
     })
     socket.data.playerId = socket.id
+  }
+
+  // Reconnecte un joueur existant (changement de socket.id après refresh).
+  // Retourne { ok, player } ou { error }.
+  reconnectPlayer(socket, token) {
+    const p = this.players.find((x) => x.token === token && !x.isBot)
+    if (!p) return { error: 'Joueur introuvable' }
+    const oldId = p.id
+    p.id = socket.id
+    socket.data.playerId = socket.id
+
+    // Mettre à jour les Maps qui indexent par playerId
+    if (this.choices.has(oldId))      { this.choices.set(socket.id, this.choices.get(oldId));         this.choices.delete(oldId) }
+    if (this.teamChoices.has(oldId))  { this.teamChoices.set(socket.id, this.teamChoices.get(oldId)); this.teamChoices.delete(oldId) }
+    if (this.validTeams.has(oldId))   { this.validTeams.set(socket.id, this.validTeams.get(oldId));   this.validTeams.delete(oldId) }
+    if (this.playerHistory.has(oldId)){ this.playerHistory.set(socket.id, this.playerHistory.get(oldId)); this.playerHistory.delete(oldId) }
+    if (this.firstVoterThisRound === oldId) this.firstVoterThisRound = socket.id
+
+    return { ok: true, player: p }
   }
 
   addBot(name) {
@@ -522,15 +542,38 @@ class GameRoom {
 
   _startIntermission() {
     this.phase = 'intermission'
-    const duration = this.testMode ? TEST_INTERMISSION_MS : INTERMISSION_MS
-    const endsAt = Date.now() + duration
+    this.players.forEach((p) => { p.intermissionAcknowledged = false })
+
     this.io.to(this.code).emit('game:intermission', {
-      endsAt,
       scores: this.publicPlayers().map((p) => ({ id: p.id, name: p.name, score: p.score })),
       round: this.round,
     })
-    this.io.to(this.code).emit('game:state', { phase: 'intermission', players: this.publicPlayers() })
-    setTimeout(() => this._startRound(), duration)
+    this.io.to(this.code).emit('game:state', {
+      phase: 'intermission',
+      players: this.publicPlayers(),
+      intermissionAckCount: 0,
+      totalPlayers: this.players.length,
+    })
+
+    // Bots cliquent automatiquement après un petit délai
+    this._triggerBots()
+  }
+
+  acknowledgeIntermission(id) {
+    if (this.phase !== 'intermission') return
+    const p = this.players.find((x) => x.id === id)
+    if (!p || p.intermissionAcknowledged) return
+    p.intermissionAcknowledged = true
+
+    const ackCount = this.players.filter((x) => x.intermissionAcknowledged).length
+    this.io.to(this.code).emit('game:state', {
+      intermissionAckCount: ackCount,
+      totalPlayers: this.players.length,
+    })
+
+    if (ackCount >= this.players.length) {
+      setTimeout(() => this._startRound(), 400)
+    }
   }
 
   _startFinal() {
@@ -562,6 +605,11 @@ class GameRoom {
           if (this.phase !== 'results') return
           this.acknowledgeResults(bot.id)
         }, 1000 + Math.random() * 1500)
+      } else if (this.phase === 'intermission' && !bot.intermissionAcknowledged) {
+        setTimeout(() => {
+          if (this.phase !== 'intermission') return
+          this.acknowledgeIntermission(bot.id)
+        }, 1500 + Math.random() * 1500)
       } else if (this.phase === 'team_selection' && !bot.teamSubmitted) {
         setTimeout(() => {
           if (this.phase !== 'team_selection') return

@@ -36,6 +36,10 @@ export default function WaitingRoomPage() {
 
   function leaveRoom() {
     socket.emit('room:leave', () => {
+      try {
+        const cur = JSON.parse(localStorage.getItem('menteur:session') || '{}')
+        localStorage.setItem('menteur:session', JSON.stringify({ token: cur.token }))
+      } catch {}
       reset()
       updateGame({ phase: 'lobby' })
     })

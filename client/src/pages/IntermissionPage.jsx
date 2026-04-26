@@ -1,48 +1,40 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useGame } from '../context/GameContext'
+import { useSocket } from '../context/SocketContext'
 import MissionsDrawer from '../components/MissionsDrawer'
 import WhispersDrawer from '../components/WhispersDrawer'
 import Avatar from '../components/Avatar'
 
-function useCountdown(endsAt) {
-  const [remaining, setRemaining] = useState(0)
-  useEffect(() => {
-    if (!endsAt) return
-    const tick = () => setRemaining(Math.max(0, Math.floor((endsAt - Date.now()) / 1000)))
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [endsAt])
-  return remaining
-}
-
-function fmt(s) {
-  const m = Math.floor(s / 60)
-  const sec = s % 60
-  return `${m}:${String(sec).padStart(2, '0')}`
-}
-
 export default function IntermissionPage() {
-  const { intermissionEndsAt, players, playerId, round, whispers } = useGame()
-  const remaining = useCountdown(intermissionEndsAt)
+  const { players, playerId, round, whispers, intermissionAckCount, totalPlayers } = useGame()
+  const { socket } = useSocket()
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [whispersOpen, setWhispersOpen] = useState(false)
+  const [acked, setAcked] = useState(false)
 
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
   const unreadTotal = whispers.filter((w) => w.to === playerId && !w.read).length
+  const ackCount = intermissionAckCount ?? 0
+  const total = totalPlayers ?? players.length
+
+  function continuer() {
+    if (acked) return
+    setAcked(true)
+    socket.emit('player:intermission_acknowledged', () => {})
+  }
 
   return (
-    <div className="min-h-screen flex flex-col p-6 max-w-lg mx-auto">
-      {/* Timer */}
+    <div className="min-h-screen flex flex-col p-6 pb-32 max-w-lg mx-auto relative">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-muted text-xs uppercase tracking-wide">Pause</p>
           <h2 className="text-white font-bold text-xl">Après la manche {round}</h2>
         </div>
         <div className="text-right">
-          <p className="text-muted text-xs mb-1">Reprise dans</p>
-          <p className="text-3xl font-mono font-bold text-gold">{fmt(remaining)}</p>
+          <p className="text-muted text-xs mb-1">Joueurs prêts</p>
+          <p className="text-2xl font-mono font-bold text-gold">{ackCount} / {total}</p>
         </div>
       </div>
 
@@ -104,6 +96,28 @@ export default function IntermissionPage() {
       >
         📜 Mes missions secrètes
       </button>
+
+      {/* Bouton continuer fixé en bas */}
+      <div className="fixed bottom-0 inset-x-0 px-4 pt-6 pb-4 safe-bottom bg-gradient-to-t from-noir via-noir to-noir/0 pointer-events-none z-30">
+        <div className="max-w-lg mx-auto pointer-events-auto">
+          <button
+            onClick={continuer}
+            disabled={acked}
+            className={`w-full min-h-[56px] rounded-2xl text-base font-bold transition-all ${
+              acked
+                ? 'bg-surface text-muted border-2 border-border cursor-default'
+                : 'bg-gold text-noir active:scale-95'
+            }`}
+          >
+            {acked
+              ? `En attente des autres… (${ackCount} / ${total})`
+              : 'Continuer la partie →'}
+          </button>
+          <p className="text-center text-muted text-xs mt-2">
+            La manche suivante démarre quand tout le monde a cliqué
+          </p>
+        </div>
+      </div>
 
       <MissionsDrawer open={missionsOpen} onClose={() => setMissionsOpen(false)} />
       <WhispersDrawer open={whispersOpen} onClose={() => setWhispersOpen(false)} />

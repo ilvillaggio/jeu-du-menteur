@@ -20,14 +20,14 @@ io.on('connection', (socket) => {
   console.log(`[+] ${socket.id} connected`)
 
   // ─── Create room ───
-  socket.on('room:create', ({ name, playerCount, totalRounds }, cb) => {
+  socket.on('room:create', ({ name, playerCount, totalRounds, token }, cb) => {
     let code
     do { code = generateCode() } while (rooms.has(code))
 
     const room = new GameRoom(code, playerCount, io, false, totalRounds)
     rooms.set(code, room)
 
-    room.addPlayer(socket, name)
+    room.addPlayer(socket, name, token)
     socket.join(code)
     socket.data.roomCode = code
 
@@ -35,14 +35,14 @@ io.on('connection', (socket) => {
   })
 
   // ─── Create test room (solo avec bots) ───
-  socket.on('room:create_test', ({ name, playerCount, totalRounds }, cb) => {
+  socket.on('room:create_test', ({ name, playerCount, totalRounds, token }, cb) => {
     let code
     do { code = generateCode() } while (rooms.has(code))
 
     const room = new GameRoom(code, playerCount, io, true /* testMode */, totalRounds)
     rooms.set(code, room)
 
-    room.addPlayer(socket, name)
+    room.addPlayer(socket, name, token)
     socket.join(code)
     socket.data.roomCode = code
 
@@ -55,18 +55,40 @@ io.on('connection', (socket) => {
   })
 
   // ─── Join room ───
-  socket.on('room:join', ({ name, code }, cb) => {
+  socket.on('room:join', ({ name, code, token }, cb) => {
     const room = rooms.get(code)
     if (!room) return cb({ error: 'Salle introuvable' })
     if (room.isFull()) return cb({ error: 'Salle pleine' })
     if (room.phase !== 'lobby' && room.phase !== 'waiting') return cb({ error: 'Partie déjà commencée' })
 
-    room.addPlayer(socket, name)
+    room.addPlayer(socket, name, token)
     socket.join(code)
     socket.data.roomCode = code
 
     io.to(code).emit('game:state', room.stateForAll())
     cb({ roomCode: code, players: room.publicPlayers() })
+  })
+
+  // ─── Reconnect (après refresh page) ───
+  socket.on('room:reconnect', ({ code, token }, cb = () => {}) => {
+    const room = rooms.get(code)
+    if (!room) return cb({ error: 'Salle introuvable' })
+    const res = room.reconnectPlayer(socket, token)
+    if (res.error) return cb({ error: res.error })
+
+    socket.join(code)
+    socket.data.roomCode = code
+    socket.data.playerId = socket.id
+
+    // Renvoie l'état complet personnalisé au joueur reconnecté
+    const fullState = {
+      ...room.stateForAll(),
+      myMissions: res.player.missions,
+      myMissionScore: res.player.missionScore,
+      myHistory: room._historyForPlayer(res.player),
+      playerId: socket.id,
+    }
+    cb({ ok: true, roomCode: code, state: fullState })
   })
 
   // ─── Ready ───
@@ -131,6 +153,14 @@ io.on('connection', (socket) => {
     if (!room) return cb({ error: 'Salle introuvable' })
     if (room.players[0]?.id !== socket.id) return cb({ error: 'Seul l\'hôte peut lancer' })
     if (room.players.length < 1) return cb({ error: 'Pas assez de joueurs' })
+
+    // Auto-fill avec des bots pour atteindre playerCount
+    while (room.players.length < room.playerCount) {
+      room.addBot()
+    }
+    // Notifier les joueurs de la mise à jour avant le start
+    io.to(room.code).emit('game:state', room.stateForAll())
+
     room.startGame()
     cb({ ok: true })
   })
@@ -151,6 +181,14 @@ io.on('connection', (socket) => {
     cb({ ok: true })
   })
 
+  // ─── Intermission acknowledged (clic "Continuer la partie") ───
+  socket.on('player:intermission_acknowledged', (cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+    room.acknowledgeIntermission(socket.id)
+    cb({ ok: true })
+  })
+
   // ─── Team choice ───
   socket.on('player:team_choice', (partners, cb = () => {}) => {
     const room = rooms.get(socket.data.roomCode)
@@ -164,6 +202,39 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.data.roomCode)
     if (!room) return
     room.registerChoice(socket.id, choice)
+  })
+
+  // ─── Pact chat : message à tous les membres du pacte mutuel ───
+  socket.on('pact:send', ({ text }, cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+
+    const sender = room.players.find((p) => p.id === socket.id)
+    if (!sender) return cb({ error: 'Non autorisé' })
+
+    const partners = room.validTeams.get(socket.id) || []
+    if (partners.length === 0) return cb({ error: 'Pas de pacte actif' })
+
+    const trimmed = (text || '').toString().trim().slice(0, 300)
+    if (!trimmed) return cb({ error: 'Message vide' })
+
+    const msg = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      from: sender.id,
+      fromName: sender.name,
+      fromAvatar: sender.avatar,
+      text: trimmed,
+      at: Date.now(),
+    }
+
+    // Diffuse aux membres humains du pacte (l'envoyeur inclus, pour synchro)
+    const recipients = [socket.id, ...partners]
+    recipients.forEach((rid) => {
+      const r = room.players.find((p) => p.id === rid)
+      if (r && !r.isBot) io.to(rid).emit('pact:received', msg)
+    })
+
+    cb({ ok: true, message: msg })
   })
 
   // ─── Whisper (message privé entre joueurs) ───

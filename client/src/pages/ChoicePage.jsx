@@ -5,6 +5,7 @@ import { useSocket } from '../context/SocketContext'
 import IdentityCard from '../components/IdentityCard'
 import MissionsDrawer from '../components/MissionsDrawer'
 import WhispersDrawer from '../components/WhispersDrawer'
+import PactChatDrawer from '../components/PactChatDrawer'
 import MessagesIconButton from '../components/MessagesIconButton'
 import ScoreboardDrawer from '../components/ScoreboardDrawer'
 import Avatar from '../components/Avatar'
@@ -43,7 +44,7 @@ const ACTIONS = [
 ]
 
 export default function ChoicePage() {
-  const { players, playerId, round, totalRounds, isActive, myValidPartners, myMissions } = useGame()
+  const { players, playerId, round, totalRounds, isActive, myValidPartners, myMissions, pactMessages } = useGame()
   const { socket } = useSocket()
 
   const isFinalRound = round === (totalRounds || 5)
@@ -53,9 +54,12 @@ export default function ChoicePage() {
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [whispersOpen, setWhispersOpen] = useState(false)
   const [scoreboardOpen, setScoreboardOpen] = useState(false)
+  const [pactOpen, setPactOpen] = useState(false)
 
   const validPartnerPlayers = players.filter((p) => myValidPartners?.includes(p.id))
   const completedMissions = myMissions.filter((m) => m.completed).length
+  const unreadPactMsgs = pactMessages.filter((m) => m.from !== playerId && !m.read).length
+  const hasPact = validPartnerPlayers.length > 0
 
   function submit() {
     if (!action || !isActive) return
@@ -128,17 +132,29 @@ export default function ChoicePage() {
         <>
           <div className="flex flex-col gap-5 flex-1 pb-28">
 
-            {/* Équipe validée */}
+            {/* Équipe validée + bouton chat de pacte */}
             {validPartnerPlayers.length > 0 && (
               <section>
                 <p className="text-xs text-muted uppercase tracking-widest mb-2">Ton équipe</p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center flex-wrap">
                   {validPartnerPlayers.map((p) => (
                     <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-teal/10 border border-teal/30 rounded-xl">
                       <Avatar src={p.avatar} className="w-8 h-8 text-2xl" />
                       <span className="text-sm font-semibold text-teal-light">{p.name}</span>
                     </div>
                   ))}
+                  <button
+                    onClick={() => setPactOpen(true)}
+                    className="relative ml-auto flex items-center gap-2 px-3 py-2 bg-teal/20 hover:bg-teal/30 border-2 border-teal/40 rounded-xl touch-manipulation transition-colors"
+                  >
+                    <span className="text-xl">💬</span>
+                    <span className="text-xs font-bold text-teal-light">Chat du pacte</span>
+                    {unreadPactMsgs > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-crimson text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                        {unreadPactMsgs}
+                      </span>
+                    )}
+                  </button>
                 </div>
               </section>
             )}
@@ -200,6 +216,7 @@ export default function ChoicePage() {
 
       <MissionsDrawer open={missionsOpen} onClose={() => setMissionsOpen(false)} />
       <WhispersDrawer open={whispersOpen} onClose={() => setWhispersOpen(false)} />
+      <PactChatDrawer open={pactOpen} onClose={() => setPactOpen(false)} />
       <ScoreboardDrawer open={scoreboardOpen} onClose={() => setScoreboardOpen(false)} />
     </div>
   )

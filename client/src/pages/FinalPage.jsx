@@ -14,6 +14,10 @@ export default function FinalPage() {
   function backToMenu() {
     // Nettoie côté serveur si on est encore dans une vraie salle, puis revient au lobby.
     socket?.emit('room:leave', () => {})
+    try {
+      const cur = JSON.parse(localStorage.getItem('menteur:session') || '{}')
+      localStorage.setItem('menteur:session', JSON.stringify({ token: cur.token }))
+    } catch {}
     reset()
     updateGame({ phase: 'lobby' })
   }

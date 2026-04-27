@@ -132,6 +132,11 @@ export default function FinaleSequence({ sorted, onComplete }) {
   if (acts.length === 0) return null
   const act = acts[actIdx]
 
+  function skip() {
+    droneRef.current?.stop(0.3)
+    onComplete()
+  }
+
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden select-none">
       <AnimatePresence mode="wait">
@@ -141,6 +146,15 @@ export default function FinaleSequence({ sorted, onComplete }) {
         {phase === 'interlude' && <Interlude key={`i-${act.id}`} />}
         {phase === 'blackout' && <Blackout key="bo" />}
       </AnimatePresence>
+
+      {/* Bouton "Passer" — discret en haut à droite, toujours visible (respecte la safe-area iPhone) */}
+      <button
+        onClick={skip}
+        className="absolute right-4 z-50 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide uppercase bg-black/40 border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors backdrop-blur-sm touch-manipulation"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+      >
+        Passer →
+      </button>
     </div>
   )
 }

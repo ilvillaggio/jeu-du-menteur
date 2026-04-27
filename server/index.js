@@ -135,11 +135,11 @@ io.on('connection', (socket) => {
     if (room.players[0]?.id !== socket.id) return cb({ error: 'Seul l\'hôte peut modifier' })
 
     if (playerCount !== undefined) {
-      if (playerCount < 2 || playerCount > 12) return cb({ error: 'Nombre de joueurs invalide' })
+      if (playerCount < 2 || playerCount > 20) return cb({ error: 'Nombre de joueurs invalide' })
       room.playerCount = playerCount
     }
     if (totalRounds !== undefined) {
-      if (totalRounds < 3 || totalRounds > 12) return cb({ error: 'Nombre de manches invalide' })
+      if (totalRounds < 1 || totalRounds > 20) return cb({ error: 'Nombre de manches invalide' })
       room.totalRounds = totalRounds
     }
 

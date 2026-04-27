@@ -115,21 +115,22 @@ export default function LobbyPage() {
               <label className="text-xs text-muted uppercase tracking-wide mb-1 block">
                 Nombre de joueurs
               </label>
-              <div className="flex gap-2">
-                {[4, 5, 6, 7, 8, 9, 10, 11].map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setPlayerCount(n)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
-                      playerCount === n
-                        ? 'bg-gold text-noir border-gold'
-                        : 'border-border text-muted hover:border-subtle'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+              <div className="flex items-stretch gap-2">
+                <button
+                  onClick={() => setPlayerCount((n) => Math.max(2, n - 1))}
+                  disabled={playerCount <= 2}
+                  className="w-14 rounded-lg border border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >−</button>
+                <div className="flex-1 flex items-center justify-center bg-gold/10 border-2 border-gold rounded-lg py-2 text-3xl font-bold text-gold-light tabular-nums">
+                  {playerCount}
+                </div>
+                <button
+                  onClick={() => setPlayerCount((n) => Math.min(20, n + 1))}
+                  disabled={playerCount >= 20}
+                  className="w-14 rounded-lg border border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >+</button>
               </div>
+              <p className="text-[10px] text-muted text-center mt-1">2 à 20 joueurs (les places vides sont remplies par des bots)</p>
             </div>
           )}
 
@@ -138,21 +139,22 @@ export default function LobbyPage() {
               <label className="text-xs text-muted uppercase tracking-wide mb-1 block">
                 Nombre de manches
               </label>
-              <div className="flex gap-2">
-                {[3, 5, 7, 9, 12].map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setRoundsCount(n)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
-                      roundsCount === n
-                        ? 'bg-gold text-noir border-gold'
-                        : 'border-border text-muted hover:border-subtle'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+              <div className="flex items-stretch gap-2">
+                <button
+                  onClick={() => setRoundsCount((n) => Math.max(1, n - 1))}
+                  disabled={roundsCount <= 1}
+                  className="w-14 rounded-lg border border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >−</button>
+                <div className="flex-1 flex items-center justify-center bg-gold/10 border-2 border-gold rounded-lg py-2 text-3xl font-bold text-gold-light tabular-nums">
+                  {roundsCount}
+                </div>
+                <button
+                  onClick={() => setRoundsCount((n) => Math.min(20, n + 1))}
+                  disabled={roundsCount >= 20}
+                  className="w-14 rounded-lg border border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >+</button>
               </div>
+              <p className="text-[10px] text-muted text-center mt-1">1 à 20 manches (la dernière manche compte double)</p>
             </div>
           )}
 

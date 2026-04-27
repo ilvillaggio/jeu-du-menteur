@@ -5,9 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 
-const COUNTS  = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-const ROUNDS  = [3, 5, 7, 9, 12]
-
 export default function WaitingRoomPage() {
   const { players, roomCode, playerId, totalPlayers, totalRounds, reset, updateGame } = useGame()
   const { socket } = useSocket()
@@ -78,7 +75,7 @@ export default function WaitingRoomPage() {
           )}
         </div>
 
-        {/* Count picker */}
+        {/* Count picker — stepper */}
         <AnimatePresence>
           {editingCount && (
             <motion.div
@@ -88,20 +85,20 @@ export default function WaitingRoomPage() {
               className="overflow-hidden mt-3"
             >
               <p className="text-xs text-muted mb-2">Combien de joueurs ?</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {COUNTS.map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => changeCount(n)}
-                    className={`w-12 h-12 rounded-xl border-2 font-bold text-sm touch-manipulation transition-colors ${
-                      n === totalPlayers
-                        ? 'border-gold bg-gold/10 text-gold-light'
-                        : 'border-border bg-surface text-muted'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+              <div className="flex items-stretch gap-2 max-w-xs mx-auto">
+                <button
+                  onClick={() => changeCount(Math.max(2, (totalPlayers || 6) - 1))}
+                  disabled={(totalPlayers || 6) <= 2}
+                  className="w-14 rounded-xl border-2 border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >−</button>
+                <div className="flex-1 flex items-center justify-center bg-gold/10 border-2 border-gold rounded-xl py-2 text-3xl font-bold text-gold-light tabular-nums">
+                  {totalPlayers || 6}
+                </div>
+                <button
+                  onClick={() => changeCount(Math.min(20, (totalPlayers || 6) + 1))}
+                  disabled={(totalPlayers || 6) >= 20}
+                  className="w-14 rounded-xl border-2 border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >+</button>
               </div>
             </motion.div>
           )}
@@ -131,20 +128,20 @@ export default function WaitingRoomPage() {
               className="overflow-hidden mt-3"
             >
               <p className="text-xs text-muted mb-2">Combien de manches ?</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {ROUNDS.map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => changeRounds(n)}
-                    className={`w-12 h-12 rounded-xl border-2 font-bold text-sm touch-manipulation transition-colors ${
-                      n === totalRounds
-                        ? 'border-gold bg-gold/10 text-gold-light'
-                        : 'border-border bg-surface text-muted'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+              <div className="flex items-stretch gap-2 max-w-xs mx-auto">
+                <button
+                  onClick={() => changeRounds(Math.max(1, (totalRounds || 5) - 1))}
+                  disabled={(totalRounds || 5) <= 1}
+                  className="w-14 rounded-xl border-2 border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >−</button>
+                <div className="flex-1 flex items-center justify-center bg-gold/10 border-2 border-gold rounded-xl py-2 text-3xl font-bold text-gold-light tabular-nums">
+                  {totalRounds || 5}
+                </div>
+                <button
+                  onClick={() => changeRounds(Math.min(20, (totalRounds || 5) + 1))}
+                  disabled={(totalRounds || 5) >= 20}
+                  className="w-14 rounded-xl border-2 border-border text-2xl font-bold text-white bg-surface active:bg-white/5 disabled:opacity-30 touch-manipulation"
+                >+</button>
               </div>
             </motion.div>
           )}

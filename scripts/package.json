@@ -1,0 +1,14 @@
+{
+  "name": "jeu-du-menteur-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scripts utilitaires (génération du QR code imprimable, etc.)",
+  "scripts": {
+    "qr": "node generate-qr.js"
+  },
+  "dependencies": {
+    "pdfkit": "^0.15.0",
+    "qrcode": "^1.5.3",
+    "sharp": "^0.33.0"
+  }
+}

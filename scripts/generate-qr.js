@@ -1,11 +1,20 @@
 // Génère une affiche imprimable A4 avec le QR code de l'application + design.
 // Usage : node scripts/generate-qr.js
 const QRCode = require('qrcode')
+const sharp = require('sharp')
+const PDFDocument = require('pdfkit')
 const fs = require('fs')
 const path = require('path')
 
 const APP_URL = 'https://jeu-du-menteur-production.up.railway.app'
 const OUTPUT_HTML = path.join(__dirname, '..', 'print', 'qr-jeu-du-menteur.html')
+const OUTPUT_PNG  = path.join(__dirname, '..', 'print', 'qr-jeu-du-menteur-300dpi.png')
+const OUTPUT_PDF  = path.join(__dirname, '..', 'print', 'qr-jeu-du-menteur-A4.pdf')
+
+// A4 à 300 DPI (qualité imprimerie pro)
+// 210 mm × 297 mm  ⇒  2480 × 3508 px
+const A4_300_W = 2480
+const A4_300_H = 3508
 
 async function main() {
   fs.mkdirSync(path.dirname(OUTPUT_HTML), { recursive: true })
@@ -204,6 +213,40 @@ ${poster.replace(/^<\?xml[^>]*\?>\s*/, '').replace(/<svg /, '<svg preserveAspect
   fs.writeFileSync(OUTPUT_HTML, html, 'utf8')
   console.log(`[ok] Page imprimable HTML : ${OUTPUT_HTML}`)
   console.log(`     Ouvre ce fichier dans Chrome puis Ctrl+P pour impression pleine page.`)
+
+  // Génération du PNG haute résolution (A4 à 300 DPI = 2480 × 3508 px)
+  // Pour impression pro / partage / archivage
+  await sharp(Buffer.from(poster), { density: 300 })
+    .resize(A4_300_W, A4_300_H, { fit: 'fill' })
+    .png({ quality: 100, compressionLevel: 9 })
+    .toFile(OUTPUT_PNG)
+
+  const stats = fs.statSync(OUTPUT_PNG)
+  console.log(`[ok] PNG haute résolution : ${OUTPUT_PNG}`)
+  console.log(`     ${A4_300_W} × ${A4_300_H} px @ 300 DPI (${(stats.size / 1024).toFixed(0)} Ko)`)
+
+  // Génération du PDF A4 (format standard d'impression — embed le PNG 300 DPI)
+  // L'imprimeur ou Adobe Reader gère ensuite parfaitement la mise en page.
+  await new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      info: {
+        Title: 'Le Jeu du Menteur — QR code',
+        Author: 'Il Villaggio',
+      },
+    })
+    const stream = fs.createWriteStream(OUTPUT_PDF)
+    doc.pipe(stream)
+    // A4 en points PDF = 595.28 × 841.89, le PNG remplit pile la page
+    doc.image(OUTPUT_PNG, 0, 0, { width: 595.28, height: 841.89 })
+    doc.end()
+    stream.on('finish', resolve)
+    stream.on('error', reject)
+  })
+  const pdfStats = fs.statSync(OUTPUT_PDF)
+  console.log(`[ok] PDF A4 imprimable :   ${OUTPUT_PDF}`)
+  console.log(`     Format A4 (210×297 mm), 300 DPI embed (${(pdfStats.size / 1024).toFixed(0)} Ko)`)
   console.log()
   console.log(`     QR pointe vers : ${APP_URL}`)
 }

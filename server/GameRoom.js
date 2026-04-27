@@ -59,6 +59,7 @@ class GameRoom {
       score: 0, missionScore: 0, ready: false, voted: false,
       teamSubmitted: false, missionAcknowledged: false, missions: [],
       isBot: false,
+      online: true,
       token, // identifiant stable côté client (localStorage), pour reconnexion
     })
     socket.data.playerId = socket.id
@@ -71,7 +72,14 @@ class GameRoom {
     if (!p) return { error: 'Joueur introuvable' }
     const oldId = p.id
     p.id = socket.id
+    p.online = true
     socket.data.playerId = socket.id
+
+    // Annule la suppression différée si elle était programmée
+    if (this._cleanupTimer) {
+      clearTimeout(this._cleanupTimer)
+      this._cleanupTimer = null
+    }
 
     // Mettre à jour les Maps qui indexent par playerId
     if (this.choices.has(oldId))      { this.choices.set(socket.id, this.choices.get(oldId));         this.choices.delete(oldId) }
@@ -92,6 +100,7 @@ class GameRoom {
       score: 0, missionScore: 0, ready: true, voted: false,
       teamSubmitted: false, missionAcknowledged: false, missions: [],
       isBot: true,
+      online: true,
     })
   }
 
@@ -662,6 +671,7 @@ class GameRoom {
     return this.players.map((p) => ({
       id: p.id, name: p.name, avatar: p.avatar, role: p.role,
       score: p.score, ready: p.ready, voted: p.voted, teamSubmitted: p.teamSubmitted,
+      online: p.online !== false,
     }))
   }
 

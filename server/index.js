@@ -274,11 +274,36 @@ io.on('connection', (socket) => {
     const code = socket.data.roomCode
     const room = rooms.get(code)
     if (!room) return
-    room.removePlayer(socket.id)
-    if (room.isEmpty()) {
-      rooms.delete(code)
+
+    const inLobby = room.phase === 'waiting' || room.phase === 'lobby'
+
+    if (inLobby) {
+      // Avant que la partie ne commence : on retire vraiment le joueur
+      room.removePlayer(socket.id)
+      if (room.isEmpty()) {
+        rooms.delete(code)
+      } else {
+        io.to(code).emit('game:state', room.stateForAll())
+      }
     } else {
-      io.to(code).emit('game:state', room.stateForAll())
+      // Pendant la partie : on garde le joueur (il pourra se reconnecter
+      // via son token). On le marque juste comme déconnecté.
+      const p = room.players.find((x) => x.id === socket.id)
+      if (p) {
+        p.online = false
+        io.to(code).emit('game:state', room.stateForAll())
+
+        // Au cas où plus personne d'humain ne soit en ligne, on supprime la salle
+        // après 10 minutes d'inactivité totale.
+        const anyHumanOnline = room.players.some((x) => !x.isBot && x.online !== false)
+        if (!anyHumanOnline) {
+          if (room._cleanupTimer) clearTimeout(room._cleanupTimer)
+          room._cleanupTimer = setTimeout(() => {
+            const stillEmpty = !room.players.some((x) => !x.isBot && x.online !== false)
+            if (stillEmpty) rooms.delete(code)
+          }, 10 * 60 * 1000)
+        }
+      }
     }
   })
 })

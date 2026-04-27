@@ -1,20 +1,36 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSocket } from '../context/SocketContext'
 import { useGame } from '../context/GameContext'
 import { getOrCreateToken, saveSession } from '../lib/session'
 
+// Lit le code de salle depuis l'URL si présent (?room=ABCD).
+function getRoomFromUrl() {
+  if (typeof window === 'undefined') return ''
+  const params = new URLSearchParams(window.location.search)
+  const code = (params.get('room') || '').trim().toUpperCase().slice(0, 4)
+  return /^[A-Z0-9]{4}$/.test(code) ? code : ''
+}
+
 export default function LobbyPage() {
   const { socket } = useSocket()
   const { setPlayer, updateGame } = useGame()
   const token = getOrCreateToken()
+  const presetRoom = getRoomFromUrl()
 
   const [name, setName] = useState('')
-  const [roomCode, setRoomCode] = useState('')
+  const [roomCode, setRoomCode] = useState(presetRoom)
   const [playerCount, setPlayerCount] = useState(6)
   const [roundsCount, setRoundsCount] = useState(5)
-  const [mode, setMode] = useState('create') // create | join
+  const [mode, setMode] = useState(presetRoom ? 'join' : 'create')
   const [error, setError] = useState('')
+
+  // Si l'URL contient un code, on bascule en mode "rejoindre" et on nettoie l'URL
+  useEffect(() => {
+    if (presetRoom && typeof window !== 'undefined') {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [presetRoom])
 
   function handleCreate() {
     if (!name.trim()) return setError('Entre ton prénom')

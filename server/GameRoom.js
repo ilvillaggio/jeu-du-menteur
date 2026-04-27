@@ -318,12 +318,12 @@ class GameRoom {
       let delta = 0
 
       // ===== Payoffs par action =====
-      // Profiter  : +30 garanti, ne participe à rien d'autre
-      // Coopérer  : +40 si TOUT le pacte coopère (pas de traître, pas de profiteur)
-      //             Si ≥ 2 traîtres : le coopérateur RAMASSE le butin (80 × nbTraîtres)
+      // Profiter  : +25 garanti, ne participe à rien d'autre
+      // Coopérer  : +50 si TOUT le pacte coopère (pas de traître, pas de profiteur)
+      //             Si ≥ 2 traîtres : le coopérateur RAMASSE le butin (75 × nbTraîtres)
       //             partagé entre tous les coopérateurs du pacte
       //             Sinon : 0
-      // Trahir    : +80 si seul à trahir dans le pacte, sinon -80 (pénalité)
+      // Trahir    : +75 si seul à trahir dans le pacte, sinon -75 (pénalité)
       // Dernière manche : tous les gains/pertes sont doublés
 
       // Compteurs d'actions dans le pacte du joueur (inclut le joueur lui-même)
@@ -339,18 +339,18 @@ class GameRoom {
       if (choice.action === 'cooperer') {
         if (nbTrahir === 0 && nbProfit === 0) {
           // Tout le pacte coopère : gain collectif
-          delta = 40
+          delta = 50
         } else if (nbTrahir >= 2 && nbCoop > 0) {
           // Au moins 2 traîtres : leur butin est partagé entre les coopérateurs
-          delta = Math.floor((80 * nbTrahir) / nbCoop)
+          delta = Math.floor((75 * nbTrahir) / nbCoop)
         } else {
-          // Un seul traître (qui empoche +80), ou au moins un profiteur : la coop échoue
+          // Un seul traître (qui empoche +75), ou au moins un profiteur : la coop échoue
           delta = 0
         }
       } else if (choice.action === 'profiter') {
-        delta = 30
+        delta = 25
       } else if (choice.action === 'trahir') {
-        delta = nbTrahir === 1 ? 80 : -80
+        delta = nbTrahir === 1 ? 75 : -75
       }
 
       // Double enjeu à la dernière manche

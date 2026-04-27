@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>QR · Le Jeu du Menteur — A4 imprimable</title>
+  <style>
+    /* Format A4 sans marge — l'affiche remplit toute la feuille à l'impression */
+    @page { size: A4; margin: 0; }
+    html, body { margin: 0; padding: 0; background: #1a1a22; }
+    body { display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+    /* Conteneur SVG : exactement A4 sans débordement */
+    .poster {
+      width: 210mm;
+      height: 297mm;
+      display: block;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.6);
+      margin: 24px 0;
+    }
+    .poster svg { display: block; width: 100%; height: 100%; }
+
+    /* Barre d'instructions au-dessus de l'affiche (cachée à l'impression) */
+    .toolbar {
+      position: sticky; top: 0; z-index: 10;
+      width: 100%;
+      background: rgba(20,20,30,0.96);
+      color: #f8e89c;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid rgba(212,164,61,0.3);
+    }
+    .toolbar p { margin: 0; font-size: 13px; opacity: 0.85; }
+    .toolbar button {
+      background: linear-gradient(180deg, #f8e89c 0%, #d4a43d 100%);
+      color: #1a1410; border: 0; padding: 10px 18px;
+      border-radius: 8px; font-weight: 700; font-size: 14px;
+      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .toolbar button:hover { filter: brightness(1.05); }
+
+    /* À l'impression : on ne montre QUE l'affiche, plein cadre, sans rien d'autre */
+    @media print {
+      html, body { background: white; }
+      .toolbar { display: none !important; }
+      .poster {
+        width: 210mm; height: 297mm;
+        box-shadow: none; margin: 0;
+        page-break-after: avoid; page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <p>📄 Affiche A4 sans marge — clique sur le bouton et choisis <strong>Marges : Aucune</strong> dans Chrome pour imprimer pleine page.</p>
+    <button onclick="window.print()">🖨️ Imprimer maintenant</button>
+  </div>
+  <div class="poster">
+<svg preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a22"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8e89c"/>
+      <stop offset="50%" stop-color="#d4a43d"/>
+      <stop offset="100%" stop-color="#8a6a1f"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="0.5" cy="0.5">
+      <stop offset="60%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Fond -->
+  <rect width="210" height="297" fill="url(#bg)"/>
+  <rect width="210" height="297" fill="url(#vignette)"/>
+
+  <!-- Cadre doré décoratif extérieur -->
+  <rect x="6" y="6" width="198" height="285" fill="none" stroke="url(#gold)" stroke-width="0.6"/>
+  <rect x="9" y="9" width="192" height="279" fill="none" stroke="url(#gold)" stroke-width="0.3" opacity="0.5"/>
+
+  <!-- Coins ornementaux -->
+  <g transform="translate(10, 10) rotate(0)">
+    <path d="M 0 0 L 12 0 M 0 0 L 0 12 M 0 0 L 6 6"
+          stroke="url(#gold)" stroke-width="0.5" fill="none" opacity="0.7"/>
+    <circle r="0.8" fill="url(#gold)"/>
+  </g>
+  <g transform="translate(200, 10) rotate(90)">
+    <path d="M 0 0 L 12 0 M 0 0 L 0 12 M 0 0 L 6 6"
+          stroke="url(#gold)" stroke-width="0.5" fill="none" opacity="0.7"/>
+    <circle r="0.8" fill="url(#gold)"/>
+  </g>
+  <g transform="translate(200, 287) rotate(180)">
+    <path d="M 0 0 L 12 0 M 0 0 L 0 12 M 0 0 L 6 6"
+          stroke="url(#gold)" stroke-width="0.5" fill="none" opacity="0.7"/>
+    <circle r="0.8" fill="url(#gold)"/>
+  </g>
+  <g transform="translate(10, 287) rotate(270)">
+    <path d="M 0 0 L 12 0 M 0 0 L 0 12 M 0 0 L 6 6"
+          stroke="url(#gold)" stroke-width="0.5" fill="none" opacity="0.7"/>
+    <circle r="0.8" fill="url(#gold)"/>
+  </g>
+
+  <!-- Titre -->
+  <g transform="translate(105, 38)" text-anchor="middle">
+    <text font-family="Georgia, 'Times New Roman', serif" font-size="13" font-weight="bold"
+          fill="url(#gold)" letter-spacing="2">LE JEU DU</text>
+    <text y="14" font-family="Georgia, 'Times New Roman', serif" font-style="italic"
+          font-size="22" font-weight="bold" fill="url(#gold)" letter-spacing="3">MENTEUR</text>
+  </g>
+
+  <!-- Sous-titre -->
+  <text x="105" y="68" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-style="italic"
+        font-size="5" fill="#d4a43d" opacity="0.85" letter-spacing="2">
+    Trahis. Coopère. Survis.
+  </text>
+
+  <!-- Ligne décorative séparatrice avec losange central -->
+  <g transform="translate(105, 80)">
+    <line x1="-30" y1="0" x2="-4" y2="0" stroke="url(#gold)" stroke-width="0.4"/>
+    <polygon points="-3,0 0,-2 3,0 0,2" fill="url(#gold)"/>
+    <line x1="4" y1="0" x2="30" y2="0" stroke="url(#gold)" stroke-width="0.4"/>
+  </g>
+
+  <!-- QR code sur fond blanc avec liseré doré -->
+  <g transform="translate(40, 92)">
+    <!-- Halo doré derrière le QR -->
+    <rect x="-3" y="-3" width="136" height="136"
+          fill="url(#gold)" rx="2"/>
+    <!-- Fond blanc du QR -->
+    <rect x="0" y="0" width="130" height="130" fill="#ffffff"/>
+    <!-- Le QR lui-même, redimensionné -->
+    <g transform="scale(3.1707317073170733)">
+      <path fill="#ffffff" d="M0 0h41v41H0z"/><path stroke="#0a0a0f" d="M0 0.5h7m1 0h1m6 0h1m2 0h2m2 0h2m3 0h1m1 0h3m2 0h7M0 1.5h1m5 0h1m3 0h5m5 0h1m1 0h1m2 0h1m1 0h2m1 0h2m2 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m3 0h1m1 0h1m1 0h1m1 0h1m2 0h3m2 0h1m3 0h5m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h1m1 0h3m1 0h1m3 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m3 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h2m2 0h1m1 0h3m2 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m2 0h1m1 0h1m2 0h2m1 0h1m4 0h3m1 0h3m2 0h2m1 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 7.5h2m1 0h1m1 0h1m1 0h4m3 0h2m2 0h3m1 0h2M2 8.5h1m1 0h3m1 0h1m4 0h2m3 0h2m2 0h1m1 0h1m4 0h1m1 0h3m3 0h1m2 0h1M0 9.5h1m2 0h3m1 0h1m3 0h1m3 0h1m2 0h2m4 0h1m1 0h1m1 0h2m2 0h1m1 0h1m2 0h4M0 10.5h1m1 0h1m3 0h2m1 0h2m1 0h1m1 0h5m2 0h2m1 0h2m2 0h1m1 0h1m2 0h1m4 0h3M0 11.5h2m2 0h1m4 0h3m1 0h1m1 0h3m1 0h2m1 0h8m2 0h3m1 0h1m2 0h2M0 12.5h2m3 0h2m1 0h1m2 0h2m1 0h1m1 0h1m4 0h4m1 0h1m1 0h2m1 0h1m1 0h1m3 0h1m1 0h1M8 13.5h2m1 0h3m3 0h1m2 0h1m1 0h1m2 0h1m1 0h5m1 0h1m4 0h3M0 14.5h1m1 0h2m2 0h1m4 0h1m1 0h1m1 0h1m1 0h3m2 0h2m2 0h3m1 0h1m3 0h1m1 0h5M2 15.5h1m2 0h1m3 0h1m3 0h5m2 0h1m3 0h2m2 0h4m2 0h1m4 0h1M0 16.5h4m2 0h3m1 0h5m5 0h1m1 0h1m3 0h4m4 0h2m3 0h2M0 17.5h2m1 0h3m1 0h3m1 0h1m3 0h7m1 0h1m1 0h2m1 0h2m2 0h1m1 0h1m2 0h4M0 18.5h2m1 0h2m1 0h2m2 0h2m2 0h2m1 0h3m1 0h1m3 0h1m4 0h1m1 0h3m1 0h5M1 19.5h3m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h6m3 0h2m1 0h3m1 0h1m2 0h1M1 20.5h2m1 0h5m1 0h1m1 0h1m1 0h1m1 0h2m1 0h2m2 0h1m1 0h1m4 0h5m1 0h1m2 0h1M0 21.5h1m3 0h2m4 0h1m1 0h1m3 0h2m2 0h2m2 0h1m1 0h1m1 0h3m3 0h2m1 0h1m1 0h2M0 22.5h2m3 0h3m3 0h1m1 0h1m1 0h5m1 0h3m1 0h2m1 0h1m3 0h3m1 0h5M1 23.5h1m2 0h1m4 0h1m1 0h5m1 0h3m1 0h2m1 0h1m2 0h4m4 0h1m3 0h1M0 24.5h1m2 0h6m1 0h4m1 0h1m2 0h3m3 0h1m1 0h1m1 0h2m2 0h3m2 0h1m2 0h1M0 25.5h1m1 0h1m2 0h1m2 0h1m1 0h1m5 0h3m1 0h2m1 0h4m1 0h3m3 0h2m3 0h2M0 26.5h1m1 0h1m1 0h4m1 0h3m1 0h1m1 0h3m2 0h4m5 0h2m3 0h1m3 0h1m1 0h1M0 27.5h4m1 0h1m3 0h2m3 0h1m2 0h2m2 0h1m2 0h6m2 0h1m3 0h1M0 28.5h3m1 0h6m1 0h1m1 0h1m1 0h1m3 0h1m3 0h3m1 0h1m1 0h1m1 0h2m1 0h2m1 0h1M5 29.5h1m2 0h3m1 0h2m1 0h1m1 0h2m1 0h5m2 0h1m3 0h2m7 0h1M0 30.5h1m2 0h1m1 0h2m2 0h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h3m4 0h3m4 0h4M1 31.5h4m2 0h1m2 0h1m2 0h4m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m1 0h3m1 0h1m3 0h1M0 32.5h1m1 0h8m1 0h1m1 0h1m2 0h3m2 0h2m2 0h1m3 0h1m1 0h6m3 0h1M8 33.5h1m1 0h1m1 0h1m1 0h1m2 0h5m1 0h1m2 0h1m1 0h1m2 0h2m3 0h1m1 0h3M0 34.5h7m2 0h2m1 0h3m1 0h5m3 0h1m3 0h2m1 0h2m1 0h1m1 0h2m2 0h1M0 35.5h1m5 0h1m1 0h1m2 0h1m3 0h2m2 0h2m3 0h2m1 0h2m2 0h2m3 0h1M0 36.5h1m1 0h3m1 0h1m1 0h3m1 0h6m1 0h3m1 0h1m1 0h4m3 0h5m2 0h2M0 37.5h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h3m1 0h3m1 0h4m2 0h2m1 0h1m1 0h1m2 0h2m2 0h1M0 38.5h1m1 0h3m1 0h1m1 0h1m1 0h4m3 0h1m1 0h2m1 0h1m2 0h1m6 0h1m2 0h2m1 0h1m1 0h1M0 39.5h1m5 0h1m3 0h2m1 0h6m1 0h3m1 0h3m1 0h3m1 0h1m2 0h1m3 0h1M0 40.5h7m6 0h3m2 0h1m1 0h1m2 0h1m1 0h1m1 0h11m1 0h2"/>
+    </g>
+
+    <!-- Logo masque au centre du QR (correction H supporte un logo de ~25% du QR) -->
+    <g transform="translate(65, 65)">
+      <circle r="11" fill="#0a0a0f" stroke="url(#gold)" stroke-width="0.7"/>
+      <!-- Petit masque de carnaval -->
+      <path d="M -7 -2 Q 0 -5 7 -2 Q 6 2 3 2.5 Q 1 2.7 0 1.5 Q -1 2.7 -3 2.5 Q -6 2 -7 -2 Z"
+            fill="url(#gold)"/>
+      <ellipse cx="-3.2" cy="-1" rx="1.3" ry="0.8" fill="#0a0a0f"/>
+      <ellipse cx="3.2"  cy="-1" rx="1.3" ry="0.8" fill="#0a0a0f"/>
+    </g>
+  </g>
+
+  <!-- Instruction sous le QR -->
+  <g transform="translate(105, 240)" text-anchor="middle">
+    <text font-family="Georgia, serif" font-size="6" fill="#f8e89c" letter-spacing="3">
+      SCANNE POUR JOUER
+    </text>
+    <text y="9" font-family="'Courier New', monospace" font-size="3.2" fill="#d4a43d" opacity="0.7">
+      jeu-du-menteur-production.up.railway.app
+    </text>
+  </g>
+
+  <!-- Texte d'ambiance en bas -->
+  <g transform="translate(105, 267)" text-anchor="middle">
+    <text font-family="Georgia, serif" font-style="italic" font-size="3.6" fill="#7a6038">
+      Choisis tes alliés. Devine leurs trahisons.
+    </text>
+    <text y="6" font-family="Georgia, serif" font-style="italic" font-size="3.6" fill="#7a6038">
+      Le dernier debout remporte tout.
+    </text>
+  </g>
+</svg>
+  </div>
+</body>
+</html>

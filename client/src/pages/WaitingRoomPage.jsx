@@ -4,6 +4,7 @@ import { useSocket } from '../context/SocketContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
+import ShareRoomDrawer from '../components/ShareRoomDrawer'
 
 export default function WaitingRoomPage() {
   const { players, roomCode, playerId, totalPlayers, totalRounds, reset, updateGame } = useGame()
@@ -13,6 +14,7 @@ export default function WaitingRoomPage() {
   const [editingRounds, setEditingRounds] = useState(false)
   const [startError, setStartError] = useState('')
   const [avatarOpen, setAvatarOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
 
   const me = players.find((p) => p.id === playerId)
   const isHost = players[0]?.id === playerId
@@ -58,7 +60,19 @@ export default function WaitingRoomPage() {
       {/* Header */}
       <div className="text-center mb-6">
         <p className="text-muted text-xs uppercase tracking-widest mb-1">Code de la salle</p>
-        <h2 className="text-5xl font-mono font-bold text-gold tracking-widest">{roomCode}</h2>
+        <button
+          onClick={() => setShareOpen(true)}
+          className="text-5xl font-mono font-bold text-gold tracking-widest hover:opacity-80 active:opacity-60 transition-opacity touch-manipulation"
+          title="Partager le QR code"
+        >
+          {roomCode}
+        </button>
+        <button
+          onClick={() => setShareOpen(true)}
+          className="block mx-auto mt-1 text-xs text-gold-light/80 hover:text-gold underline touch-manipulation"
+        >
+          📱 Partager (QR code)
+        </button>
 
         {/* Player count — tap to edit if host */}
         <div className="mt-3 flex items-center justify-center gap-2">
@@ -240,6 +254,7 @@ export default function WaitingRoomPage() {
       </div>
 
       <AvatarPicker open={avatarOpen} onClose={() => setAvatarOpen(false)} />
+      <ShareRoomDrawer open={shareOpen} onClose={() => setShareOpen(false)} roomCode={roomCode} />
     </div>
   )
 }

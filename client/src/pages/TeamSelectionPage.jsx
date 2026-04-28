@@ -29,7 +29,7 @@ export default function TeamSelectionPage() {
   }
 
   function submit() {
-    if (selected.length !== 2 || submitted) return
+    if (selected.length < 1 || selected.length > 2 || submitted) return
     socket.emit('player:team_choice', selected, () => setSubmitted(true))
   }
 
@@ -43,7 +43,7 @@ export default function TeamSelectionPage() {
         <div>
           <p className="text-muted text-xs uppercase tracking-widest">Manche {round} · Étape 1/2</p>
           <h2 className="text-2xl font-bold text-white leading-tight">Choisis ton équipe</h2>
-          <p className="text-muted text-xs mt-1">Pacte mutuel = les 2 t'ont aussi choisi</p>
+          <p className="text-muted text-xs mt-1">1 partenaire = pacte à 2 · 2 partenaires = pacte à 3</p>
         </div>
         <div className="flex items-center gap-1">
           <MessagesIconButton onClick={() => setWhispersOpen(true)} />
@@ -105,8 +105,10 @@ export default function TeamSelectionPage() {
         <>
           <div className="flex flex-col gap-4 flex-1 pb-28">
             <p className="text-xs text-muted uppercase tracking-widest">
-              Sélectionne 2 partenaires{' '}
-              <span className="text-white font-bold">({selected.length}/2)</span>
+              Sélectionne 1 ou 2 partenaires{' '}
+              <span className="text-white font-bold">
+                ({selected.length === 1 ? 'pacte à 2' : selected.length === 2 ? 'pacte à 3' : 'aucun'})
+              </span>
             </p>
 
             <div className="flex flex-col gap-2">
@@ -137,14 +139,23 @@ export default function TeamSelectionPage() {
             <div className="max-w-lg mx-auto pointer-events-auto">
               <button
                 onClick={submit}
-                disabled={selected.length !== 2}
+                disabled={selected.length < 1}
                 className="btn-gold w-full min-h-[56px] rounded-2xl text-base font-bold disabled:opacity-30"
               >
-                Valider mon équipe
+                {selected.length === 1
+                  ? 'Valider — pacte à 2'
+                  : selected.length === 2
+                  ? 'Valider — pacte à 3'
+                  : 'Valider mon équipe'}
               </button>
-              {selected.length < 2 && (
+              {selected.length === 0 && (
                 <p className="text-center text-muted text-xs mt-2">
-                  Choisis encore {2 - selected.length} partenaire{2 - selected.length > 1 ? 's' : ''}
+                  Choisis 1 partenaire (pacte à 2) ou 2 partenaires (pacte à 3)
+                </p>
+              )}
+              {selected.length === 2 && (
+                <p className="text-center text-muted text-xs mt-2">
+                  Pacte à 3 valide uniquement si vos 3 choix matchent.
                 </p>
               )}
             </div>

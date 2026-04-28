@@ -207,15 +207,61 @@ class GameRoom {
 
   // Phase 2 : révélation des pactes (mutuels ou non)
   _resolveTeams() {
-    // Calcul des pactes mutuels
-    this.players.forEach((p) => {
-      const chosen = this.teamChoices.get(p.id) || []
-      const mutual = chosen.filter((partnerId) => {
-        const theirChoices = this.teamChoices.get(partnerId) || []
-        return theirChoices.includes(p.id)
-      })
-      this.validTeams.set(p.id, mutual)
-    })
+    // Règle stricte : l'INTENTION détermine le pacte, pas de fallback.
+    //   - Choisir 2 partenaires = intention "pacte à 3". Valide UNIQUEMENT si les 3
+    //     joueurs ont tous sélectionné exactement les 2 autres. Sinon : hors-jeu.
+    //   - Choisir 1 partenaire = intention "pacte à 2". Valide UNIQUEMENT si les
+    //     deux joueurs n'ont chacun sélectionné QUE l'autre. Sinon : hors-jeu.
+    //   - Si les intentions ne matchent pas (un veut 2, l'autre veut 3) : pas de pacte.
+    this.validTeams.clear()
+    const ids = this.players.map((p) => p.id)
+    const choicesOf = (id) => this.teamChoices.get(id) || []
+    const engaged = new Set()
+
+    // ── Phase 1 : pactes à 3 stricts ──
+    // Les 3 joueurs ont chacun choisi exactement les 2 autres.
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        for (let k = j + 1; k < ids.length; k++) {
+          const a = ids[i], b = ids[j], c = ids[k]
+          if (engaged.has(a) || engaged.has(b) || engaged.has(c)) continue
+          const A = choicesOf(a), B = choicesOf(b), C = choicesOf(c)
+          if (
+            A.length === 2 && B.length === 2 && C.length === 2 &&
+            A.includes(b) && A.includes(c) &&
+            B.includes(a) && B.includes(c) &&
+            C.includes(a) && C.includes(b)
+          ) {
+            engaged.add(a); engaged.add(b); engaged.add(c)
+            this.validTeams.set(a, [b, c])
+            this.validTeams.set(b, [a, c])
+            this.validTeams.set(c, [a, b])
+          }
+        }
+      }
+    }
+
+    // ── Phase 2 : pactes à 2 stricts ──
+    // Les 2 joueurs ont chacun choisi 1 SEUL partenaire, et c'est l'autre.
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = ids[i], b = ids[j]
+        if (engaged.has(a) || engaged.has(b)) continue
+        const A = choicesOf(a), B = choicesOf(b)
+        if (A.length === 1 && B.length === 1 && A[0] === b && B[0] === a) {
+          engaged.add(a); engaged.add(b)
+          this.validTeams.set(a, [b])
+          this.validTeams.set(b, [a])
+        }
+      }
+    }
+
+    // ── Phase 3 : les restants n'ont aucun pacte (hors-jeu pour cette manche) ──
+    for (const a of ids) {
+      if (!this.validTeams.has(a)) {
+        this.validTeams.set(a, [])
+      }
+    }
 
     this.phase = 'team_reveal'
 

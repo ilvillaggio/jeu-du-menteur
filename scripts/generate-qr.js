@@ -6,7 +6,7 @@ const PDFDocument = require('pdfkit')
 const fs = require('fs')
 const path = require('path')
 
-const APP_URL = 'https://jeu-du-menteur-production.up.railway.app'
+const APP_URL = 'https://jeu-du-menteur.vercel.app/'
 const OUTPUT_HTML = path.join(__dirname, '..', 'print', 'qr-jeu-du-menteur.html')
 const OUTPUT_PNG  = path.join(__dirname, '..', 'print', 'qr-jeu-du-menteur-300dpi.png')
 const OUTPUT_PDF  = path.join(__dirname, '..', 'print', 'qr-jeu-du-menteur-A4.pdf')
@@ -19,11 +19,13 @@ const A4_300_H = 3508
 async function main() {
   fs.mkdirSync(path.dirname(OUTPUT_HTML), { recursive: true })
 
-  // 1) Génère le QR code en SVG (haute correction d'erreur "H" pour autoriser un logo au centre si on veut)
+  // 1) Génère le QR code en SVG.
+  //    - errorCorrectionLevel 'H' : ~30% de tolérance (autorise un petit logo au centre)
+  //    - margin: 4 : quiet zone OBLIGATOIRE (4 modules blancs autour du QR pour que les scanners reconnaissent les bords)
   const qrSvgRaw = await QRCode.toString(APP_URL, {
     type: 'svg',
     errorCorrectionLevel: 'H',
-    margin: 0,
+    margin: 4,
     color: { dark: '#0a0a0f', light: '#ffffff' },
   })
 
@@ -110,16 +112,6 @@ async function main() {
     <g transform="scale(${qrScale})">
       ${qrInner}
     </g>
-
-    <!-- Logo masque au centre du QR (correction H supporte un logo de ~25% du QR) -->
-    <g transform="translate(${QR_SIZE_MM / 2}, ${QR_SIZE_MM / 2})">
-      <circle r="11" fill="#0a0a0f" stroke="url(#gold)" stroke-width="0.7"/>
-      <!-- Petit masque de carnaval -->
-      <path d="M -7 -2 Q 0 -5 7 -2 Q 6 2 3 2.5 Q 1 2.7 0 1.5 Q -1 2.7 -3 2.5 Q -6 2 -7 -2 Z"
-            fill="url(#gold)"/>
-      <ellipse cx="-3.2" cy="-1" rx="1.3" ry="0.8" fill="#0a0a0f"/>
-      <ellipse cx="3.2"  cy="-1" rx="1.3" ry="0.8" fill="#0a0a0f"/>
-    </g>
   </g>
 
   <!-- Instruction sous le QR -->
@@ -128,7 +120,7 @@ async function main() {
       SCANNE POUR JOUER
     </text>
     <text y="9" font-family="'Courier New', monospace" font-size="3.2" fill="#d4a43d" opacity="0.7">
-      ${APP_URL.replace('https://', '')}
+      ${APP_URL.replace('https://', '').replace(/\/$/, '')}
     </text>
   </g>
 

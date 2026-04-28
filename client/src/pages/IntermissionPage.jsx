@@ -7,7 +7,7 @@ import WhispersDrawer from '../components/WhispersDrawer'
 import Avatar from '../components/Avatar'
 
 export default function IntermissionPage() {
-  const { players, playerId, round, whispers, intermissionAckCount, totalPlayers } = useGame()
+  const { players, playerId, round, totalRounds, whispers, intermissionAckCount, totalPlayers } = useGame()
   const { socket } = useSocket()
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [whispersOpen, setWhispersOpen] = useState(false)
@@ -17,6 +17,8 @@ export default function IntermissionPage() {
   const unreadTotal = whispers.filter((w) => w.to === playerId && !w.read).length
   const ackCount = intermissionAckCount ?? 0
   const total = totalPlayers ?? players.length
+  // La prochaine manche est-elle la dernière ?
+  const isBeforeFinalRound = round + 1 === (totalRounds || 5)
 
   function continuer() {
     if (acked) return
@@ -37,6 +39,30 @@ export default function IntermissionPage() {
           <p className="text-2xl font-mono font-bold text-gold">{ackCount} / {total}</p>
         </div>
       </div>
+
+      {/* Bandeau "DERNIÈRE MANCHE" — uniquement avant la manche finale */}
+      {isBeforeFinalRound && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+          className="mb-4 p-4 rounded-2xl border-2 border-crimson bg-crimson/15 text-center"
+          style={{ boxShadow: '0 0 24px rgba(180,30,30,0.3)' }}
+        >
+          <p className="text-3xl mb-1">⚠️</p>
+          <h3 className="text-2xl font-bold text-crimson-light tracking-wider uppercase">
+            Dernière manche
+          </h3>
+          <p className="text-white font-semibold text-sm mt-1">
+            Tous les gains et pertes sont <span className="text-crimson-light font-bold">DOUBLÉS</span>
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-3 text-xs text-muted">
+            <span className="px-2 py-1 bg-gold/10 border border-gold/30 rounded text-gold-light">Profiter +50</span>
+            <span className="px-2 py-1 bg-teal/10 border border-teal/30 rounded text-teal-light">Coopérer +100</span>
+            <span className="px-2 py-1 bg-crimson/10 border border-crimson/30 rounded text-crimson-light">Trahir ±150</span>
+          </div>
+        </motion.div>
+      )}
 
       {/* Score history chart (simple) */}
       <div className="card mb-4">

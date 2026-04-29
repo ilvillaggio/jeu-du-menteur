@@ -187,6 +187,7 @@ class GameRoom {
   // Phase 1 → collecte les choix d'équipe
   registerTeamChoice(playerId, partners) {
     if (this.phase !== 'team_selection') return
+    if (this.teamChoices.has(playerId)) return  // évite les doubles soumissions
     this.teamChoices.set(playerId, partners)
 
     const p = this.players.find((x) => x.id === playerId)
@@ -199,6 +200,12 @@ class GameRoom {
       players: this.publicPlayers(), phase: 'team_selection',
       teamVotesCount: submitted, totalPlayers: total,
     })
+
+    // En mode test : dès que le joueur humain a soumis, on redéclenche les bots
+    // pour qu'ils puissent matcher ses choix et favoriser des pactes réussis.
+    if (this.testMode && p && !p.isBot) {
+      this._triggerBots()
+    }
 
     if (submitted >= total) {
       setTimeout(() => this._resolveTeams(), 500)
@@ -668,12 +675,32 @@ class GameRoom {
       } else if (this.phase === 'team_selection' && !bot.teamSubmitted) {
         setTimeout(() => {
           if (this.phase !== 'team_selection') return
+          if (bot.teamSubmitted) return // déjà soumis (re-trigger après humain)
+
+          // Mode test : si le humain a déjà soumis ET m'a choisi → 75% de chance
+          // que je matche ses choix pour qu'on forme un pacte cohérent.
+          if (this.testMode) {
+            const human = this.players.find((x) => !x.isBot)
+            const humanChoices = human ? this.teamChoices.get(human.id) : null
+            if (humanChoices && humanChoices.includes(bot.id) && Math.random() < 0.75) {
+              let matchedPicks
+              if (humanChoices.length === 1) {
+                // Pacte à 2 : le bot choisit uniquement le humain
+                matchedPicks = [human.id]
+              } else {
+                // Pacte à 3 : le bot choisit le humain + l'autre choisi par le humain
+                const otherInPact = humanChoices.find((id) => id !== bot.id)
+                matchedPicks = otherInPact ? [human.id, otherInPact] : [human.id]
+              }
+              this.registerTeamChoice(bot.id, matchedPicks)
+              return
+            }
+          }
+
+          // Comportement aléatoire normal
           const others = this.players.filter((x) => x.id !== bot.id)
           const n = Math.random() < 0.5 ? 1 : 2
-
           let picks
-          // En mode test : le bot a 50% de chance d'inclure le joueur humain
-          // dans ses picks → ~75% de chance que le joueur ait au moins un pacte mutuel
           const human = this.testMode
             ? this.players.find((x) => !x.isBot && x.id !== bot.id)
             : null
@@ -684,7 +711,6 @@ class GameRoom {
           } else {
             picks = [...others].sort(() => Math.random() - 0.5).slice(0, n).map((x) => x.id)
           }
-
           this.registerTeamChoice(bot.id, picks)
         }, delay)
       } else if (this.phase === 'choice' && !bot.voted) {

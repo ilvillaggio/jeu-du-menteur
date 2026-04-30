@@ -420,7 +420,12 @@ class GameRoom {
     if (!this.firstVoterThisRound) this.firstVoterThisRound = playerId
 
     const p = this.players.find((x) => x.id === playerId)
-    if (p) p.voted = true
+    if (p) {
+      p.voted = true
+      // Flag persistant : dès qu'il vote trahir (succès OU échec), on s'en
+      // souvient pour la mission "0 trahisons sur la partie".
+      if (choice.action === 'trahir') p.hasEverBetrayed = true
+    }
 
     const activeCount = [...this.validTeams.values()].filter((v) => v.length > 0).length
     const votesCount = this.choices.size
@@ -687,10 +692,11 @@ class GameRoom {
             }
             break
           }
-          case 'h4': { // Termine la partie avec exactement 0 trahisons (action effective)
+          case 'h4': { // Termine la partie avec exactement 0 trahisons (vote 'trahir' = raté)
             if (this.round === this.totalRounds) {
-              const neverBetrayed = hist.every((h) => h.action !== 'trahir')
-              if (neverBetrayed) m.completed = true
+              // On utilise le flag persistant : dès qu'il a voté trahir une seule
+              // fois (réussie ou ratée), la mission est invalidée.
+              if (!p.hasEverBetrayed) m.completed = true
             }
             break
           }

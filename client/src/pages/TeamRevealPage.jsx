@@ -1,16 +1,22 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useGame } from '../context/GameContext'
+import { useSocket } from '../context/SocketContext'
 import IdentityCard from '../components/IdentityCard'
 import Avatar from '../components/Avatar'
 
 export default function TeamRevealPage() {
-  const { teamReveal, round, players, playerId } = useGame()
+  const { teamReveal, round, players, playerId, teamRevealAckCount = 0, totalPlayers } = useGame()
+  const { socket } = useSocket()
+  const [acked, setAcked] = useState(false)
+
   if (!teamReveal) return null
   const myAvatar = players.find((p) => p.id === playerId)?.avatar
 
   const { pacts, isActive, trickedPlayers = [] } = teamReveal
   const validPacts = pacts.filter((p) => p.valid)
   const validCount = validPacts.length
+  const total = totalPlayers ?? players.length
 
   function formatTrickedSentence(list) {
     if (list.length === 0) return null
@@ -18,6 +24,12 @@ export default function TeamRevealPage() {
     const names = list.map((t) => t.name)
     const last = names.pop()
     return `${names.join(', ')} et ${last} se sont fait avoir`
+  }
+
+  function acknowledge() {
+    if (acked) return
+    setAcked(true)
+    socket.emit('player:team_reveal_acknowledged', () => {})
   }
 
   return (
@@ -78,42 +90,56 @@ export default function TeamRevealPage() {
         </motion.div>
       )}
 
-      {/* Status */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className={`card text-center ${isActive ? 'border-gold/30 bg-gold/5' : 'border-border'}`}
-      >
-        {isActive ? (
-          <>
-            <p className="text-2xl mb-2">⚔️</p>
-            <p className="font-bold text-white">Prépare ton action</p>
-            <p className="text-muted text-sm mt-1">La phase d'action commence dans quelques secondes…</p>
-          </>
-        ) : (
-          <>
-            {/* Perso qui tombe à la renverse */}
-            <div className="flex justify-center mb-3">
-              <motion.div
-                initial={{ rotate: 0, y: 0, opacity: 1 }}
-                animate={{ rotate: [0, -30, -75, -85, -90], y: [0, 8, 20, 28, 32], opacity: [1, 1, 1, 0.9, 0.85] }}
-                transition={{ duration: 1.3, times: [0, 0.25, 0.6, 0.85, 1], ease: 'easeIn', delay: 0.3 }}
-              >
-                <Avatar src={myAvatar} animated={false} className="w-24 h-24 text-7xl" />
-              </motion.div>
-              <motion.span
-                initial={{ scale: 0, rotate: -20 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: 0.9, type: 'spring', stiffness: 300 }}
-                className="absolute ml-24 mt-2 text-4xl"
-              >🤡</motion.span>
-            </div>
-            <p className="font-bold text-white text-lg">Tu es crédule !</p>
-            <p className="text-muted text-xs mt-2 italic">Tu passes ce tour. Les résultats arrivent bientôt.</p>
-          </>
-        )}
-      </motion.div>
+      {/* Animation pour les inactifs (perso qui tombe) */}
+      {!isActive && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="card text-center border-border mb-6"
+        >
+          <div className="flex justify-center mb-3">
+            <motion.div
+              initial={{ rotate: 0, y: 0, opacity: 1 }}
+              animate={{ rotate: [0, -30, -75, -85, -90], y: [0, 8, 20, 28, 32], opacity: [1, 1, 1, 0.9, 0.85] }}
+              transition={{ duration: 1.3, times: [0, 0.25, 0.6, 0.85, 1], ease: 'easeIn', delay: 0.3 }}
+            >
+              <Avatar src={myAvatar} animated={false} className="w-24 h-24 text-7xl" />
+            </motion.div>
+            <motion.span
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.9, type: 'spring', stiffness: 300 }}
+              className="absolute ml-24 mt-2 text-4xl"
+            >🤡</motion.span>
+          </div>
+          <p className="font-bold text-white text-lg">Tu es crédule !</p>
+          <p className="text-muted text-xs mt-2 italic">Tu observeras les autres ce tour.</p>
+        </motion.div>
+      )}
+
+      {/* Bouton "Choisir mon action" / "Continuer" — sticky en bas */}
+      <div className="fixed bottom-0 inset-x-0 px-4 pt-6 pb-4 safe-bottom bg-gradient-to-t from-noir via-noir to-noir/0 pointer-events-none z-30">
+        <div className="max-w-lg mx-auto pointer-events-auto">
+          <button
+            onClick={acknowledge}
+            disabled={acked}
+            className={`w-full min-h-[56px] rounded-2xl text-base font-bold transition-all ${
+              acked
+                ? 'bg-surface text-muted border-2 border-border cursor-default'
+                : isActive
+                  ? 'bg-gold text-noir active:scale-95'
+                  : 'bg-crimson/80 text-white active:scale-95'
+            }`}
+          >
+            {acked
+              ? `En attente des autres… (${teamRevealAckCount} / ${total})`
+              : isActive
+                ? '⚔️ Choisir mon action →'
+                : 'Continuer →'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

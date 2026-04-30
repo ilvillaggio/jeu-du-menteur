@@ -197,6 +197,14 @@ io.on('connection', (socket) => {
     cb({ ok: true })
   })
 
+  // ─── Team reveal acknowledged (clic "Choisir mon action") ───
+  socket.on('player:team_reveal_acknowledged', (cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+    room.acknowledgeTeamReveal(socket.id)
+    cb({ ok: true })
+  })
+
   // ─── Player choice ───
   socket.on('player:choice', (choice) => {
     const room = rooms.get(socket.data.roomCode)

@@ -23,6 +23,7 @@ const initialState = {
   totalPlayers: 0,
   totalRounds: 5,
   intermissionAckCount: 0,
+  teamRevealAckCount: 0,
   // Team selection
   teamReveal: null,       // { pacts: [{id,name,avatar,valid}], isActive }
   myValidPartners: [],    // IDs des partenaires mutuels

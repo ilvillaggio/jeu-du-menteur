@@ -317,7 +317,13 @@ class GameRoom {
 
     this.phase = 'team_reveal'
 
-    // Update les spectateurs morts : ils voient les pactes formés
+    // Reset les ack — on attend un clic explicite pour passer à la phase d'action
+    // (plus de timer fixe). Auto-ack pour les bots et les éliminés.
+    this.players.forEach((p) => {
+      p.teamRevealAcknowledged = !!(p.isBot || p.eliminated)
+    })
+
+    // Update les spectateurs : pactes formés
     this._broadcastSpectator()
 
     // Liste publique des joueurs qui se sont fait avoir (aucun pacte mutuel)
@@ -339,13 +345,39 @@ class GameRoom {
       this.io.to(p.id).emit('game:team_reveal', { pacts, isActive, round: this.round, trickedPlayers })
     })
 
-    // Si personne n'a d'équipe valide → round nul, on passe
-    const anyActive = this.players.some((p) => (this.validTeams.get(p.id) || []).length > 0)
-    if (!anyActive) {
-      setTimeout(() => this._resolveRound(), TEAM_REVEAL_DELAY_MS)
-    } else {
-      setTimeout(() => this._startActionPhase(), TEAM_REVEAL_DELAY_MS)
+    // Notifie l'état d'attente (compteur d'ack)
+    this._broadcastTeamRevealAck()
+
+    // Si tout le monde est déjà auto-acked (que des bots/morts), on passe
+    if (this.players.every((p) => p.teamRevealAcknowledged)) {
+      setTimeout(() => this._afterTeamReveal(), 500)
     }
+  }
+
+  acknowledgeTeamReveal(id) {
+    if (this.phase !== 'team_reveal') return
+    const p = this.players.find((x) => x.id === id)
+    if (!p || p.teamRevealAcknowledged) return
+    p.teamRevealAcknowledged = true
+    this._broadcastTeamRevealAck()
+    if (this.players.every((x) => x.teamRevealAcknowledged)) {
+      setTimeout(() => this._afterTeamReveal(), 300)
+    }
+  }
+
+  _broadcastTeamRevealAck() {
+    const ackCount = this.players.filter((x) => x.teamRevealAcknowledged).length
+    this.io.to(this.code).emit('game:state', {
+      teamRevealAckCount: ackCount,
+      totalPlayers: this.players.length,
+    })
+  }
+
+  _afterTeamReveal() {
+    if (this.phase !== 'team_reveal') return
+    const anyActive = this.players.some((p) => (this.validTeams.get(p.id) || []).length > 0)
+    if (!anyActive) this._resolveRound()
+    else this._startActionPhase()
   }
 
   // Phase 3 : action + mise (seulement pour les joueurs avec équipe valide)

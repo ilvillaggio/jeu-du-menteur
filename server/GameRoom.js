@@ -580,27 +580,27 @@ class GameRoom {
             }
             break
           }
-          case 'e7': { // Termine dans le top 3 à la fin d'une manche (classement réel, pas ex æquo avec le 4e)
-            const rank = sortedByScore.findIndex((x) => x.id === p.id)
-            const fourth = sortedByScore[3]?.score
-            const isRealTop3 =
-              rank < 3 &&
-              (fourth === undefined || sortedByScore[rank].score > fourth)
-            if (isRealTop3) m.completed = true
-            break
-          }
           case 'e8': { // Coopère lors de la dernière manche
             if (this.round === this.totalRounds && lastEntry.action === 'cooperer') m.completed = true
             break
           }
-          case 'h1': { // Trahis un joueur qui t'a choisi comme partenaire
-            if (lastEntry.action === 'trahir') {
-              // Check if any partner had chosen p.id
-              const theyChoseMe = lastEntry.partners.some((pid) => {
-                const theirChoices = this.teamChoices.get(pid) || []
-                return theirChoices.includes(p.id)
+          case 'e9': { // Réussis un pacte à 2 (1 partenaire mutuel validé)
+            if (lastEntry.partners && lastEntry.partners.length === 1) m.completed = true
+            break
+          }
+          case 'e10': { // Réussis un pacte à 3 (2 partenaires mutuels validés)
+            if (lastEntry.partners && lastEntry.partners.length === 2) m.completed = true
+            break
+          }
+          case 'e11': { // Pacte à 2 réussi alors qu'un autre joueur vous voulait à 3
+            if (lastEntry.partners && lastEntry.partners.length === 1) {
+              const myPartner = lastEntry.partners[0]
+              const someoneWantedTrio = this.players.some((other) => {
+                if (other.id === p.id || other.id === myPartner) return false
+                const theirChoices = this.teamChoices.get(other.id) || []
+                return theirChoices.includes(p.id) && theirChoices.includes(myPartner)
               })
-              if (theyChoseMe) m.completed = true
+              if (someoneWantedTrio) m.completed = true
             }
             break
           }
@@ -608,13 +608,13 @@ class GameRoom {
             if (lastEntry.delta > 100) m.completed = true
             break
           }
-          case 'h3': { // Convaincs deux partenaires de coopérer, puis trahis-les
-            if (lastEntry.action === 'trahir' && lastEntry.partners.length >= 2) {
-              const allPartnersCooped = lastEntry.partners.every((pid) => {
+          case 'h3': { // Trahis un partenaire qui a voulu coopérer
+            if (lastEntry.action === 'trahir' && lastEntry.partners.length >= 1) {
+              const someCooped = lastEntry.partners.some((pid) => {
                 const c = this.choices.get(pid)
                 return c && c.action === 'cooperer'
               })
-              if (allPartnersCooped) m.completed = true
+              if (someCooped) m.completed = true
             }
             break
           }
@@ -625,25 +625,14 @@ class GameRoom {
             }
             break
           }
-          case 'h5': { // Sois premier au classement après la manche 3
-            if (this.round === 3 && sortedByScore[0]?.id === p.id) m.completed = true
+          case 'h5': { // Atteins au moins 80 points avant la manche 3
+            if (this.round <= 2 && p.score >= 80) m.completed = true
             break
           }
-          case 'h6': { // Choisis les mêmes partenaires toute la partie
-            if (this.round === this.totalRounds && hist.length >= 2) {
-              const firstPartners = hist[0].partners
-              const alwaysSame = hist.every((h) =>
-                h.partners.length === firstPartners.length &&
-                h.partners.every((pid) => firstPartners.includes(pid))
-              )
-              if (alwaysSame) m.completed = true
-            }
-            break
-          }
-          case 'h7': { // Finis dans le top 2 final
+          case 'h7': { // Finis dans le top 3 final
             if (this.round === this.totalRounds) {
               const rank = sortedByScore.findIndex((x) => x.id === p.id)
-              if (rank < 2) m.completed = true
+              if (rank < 3) m.completed = true
             }
             break
           }
@@ -652,11 +641,42 @@ class GameRoom {
             if (profitRounds >= 3) m.completed = true
             break
           }
+          case 'h9': { // Trahis avec succès lors de la dernière manche
+            if (this.round === this.totalRounds &&
+                lastEntry.action === 'trahir' && lastEntry.delta > 0) {
+              m.completed = true
+            }
+            break
+          }
+          case 'h11': { // Trahis dans 3 manches différentes
+            const trahisons = hist.filter((h) => h.action === 'trahir').length
+            if (trahisons >= 3) m.completed = true
+            break
+          }
+          case 'h12': { // Sois seul traître réussi dans un pacte à 3
+            if (lastEntry.action === 'trahir' && lastEntry.delta > 0 &&
+                lastEntry.partners && lastEntry.partners.length === 2) {
+              m.completed = true
+            }
+            break
+          }
+          case 'h14': { // Coopère 3 manches d'affilée
+            if (hist.length >= 3) {
+              const last3 = hist.slice(-3)
+              if (last3.every((h) => h.action === 'cooperer')) m.completed = true
+            }
+            break
+          }
+          case 'h15': { // Sois en pacte à 3 dans 3 manches différentes
+            const trioRounds = hist.filter((h) => h.partners && h.partners.length === 2).length
+            if (trioRounds >= 3) m.completed = true
+            break
+          }
         }
 
         // Si la mission vient d'être complétée, ajoute ses points au missionScore privé
         if (m.completed) {
-          p.missionScore += (m.difficulty === 'hard' ? 35 : 15)
+          p.missionScore += (m.difficulty === 'hard' ? 75 : 25)
         }
       })
     })

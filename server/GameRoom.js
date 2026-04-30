@@ -37,6 +37,7 @@ class GameRoom {
     this.phase = 'waiting'
     this.round = 0
     this.choices = new Map()       // playerId → { action, mise }
+    this.choicePreviews = new Map() // playerId → action (sélection en cours, pas validée)
     this.teamChoices = new Map()   // playerId → [partnerId, partnerId]
     this.validTeams = new Map()    // playerId → [mutualPartnerId, ...]
     this.playerHistory = new Map() // playerId → [{ round, action, mise, partners, delta }]
@@ -178,6 +179,7 @@ class GameRoom {
     }
     this.round++
     this.choices.clear()
+    this.choicePreviews.clear()
     this.teamChoices.clear()
     this.validTeams.clear()
     this.firstVoterThisRound = null
@@ -362,6 +364,19 @@ class GameRoom {
     this._triggerBots()
   }
 
+  // Phase 3 → preview de l'action (avant validation). Permet aux observateurs
+  // (morts + hors-pacte vivants) de voir les vivants choisir/changer d'avis
+  // en direct, avant qu'ils ne valident leur choix final.
+  registerChoicePreview(playerId, action) {
+    if (this.phase !== 'choice') return
+    const validPartners = this.validTeams.get(playerId) || []
+    if (validPartners.length === 0) return
+    if (this.choices.has(playerId)) return // déjà validé, plus de preview
+    if (action) this.choicePreviews.set(playerId, action)
+    else this.choicePreviews.delete(playerId)
+    this._broadcastSpectator()
+  }
+
   // Phase 3 → collecte les actions (uniquement actifs)
   registerChoice(playerId, choice) {
     if (this.phase !== 'choice') return
@@ -369,6 +384,7 @@ class GameRoom {
     if (validPartners.length === 0) return // hors-jeu ce tour
 
     this.choices.set(playerId, choice)
+    this.choicePreviews.delete(playerId) // l'action est validée, plus de preview
     if (!this.firstVoterThisRound) this.firstVoterThisRound = playerId
 
     const p = this.players.find((x) => x.id === playerId)
@@ -825,11 +841,22 @@ class GameRoom {
       } else if (this.phase === 'choice' && !bot.voted) {
         const validPartners = this.validTeams.get(bot.id) || []
         if (validPartners.length === 0) return
+
+        const actions = ['cooperer', 'cooperer', 'trahir', 'profiter']
+        const finalAction = actions[Math.floor(Math.random() * actions.length)]
+        const previewAction = actions[Math.floor(Math.random() * actions.length)]
+
+        // Preview anticipée : le bot "hésite" et choisit une première action
+        // visible des observateurs avant de valider sa décision finale.
+        const previewDelay = Math.max(300, delay - 1500 - Math.random() * 800)
+        setTimeout(() => {
+          if (this.phase !== 'choice' || bot.voted) return
+          this.registerChoicePreview(bot.id, previewAction)
+        }, previewDelay)
+
         setTimeout(() => {
           if (this.phase !== 'choice') return
-          const actions = ['cooperer', 'cooperer', 'trahir', 'profiter']
-          const action = actions[Math.floor(Math.random() * actions.length)]
-          this.registerChoice(bot.id, { action, mise: 0 })
+          this.registerChoice(bot.id, { action: finalAction, mise: 0 })
         }, delay)
       }
     })
@@ -874,12 +901,21 @@ class GameRoom {
   alivePlayers() { return this.players.filter((p) => !p.eliminated) }
   aliveCount()   { return this.alivePlayers().length }
 
-  // Diffuse aux joueurs ÉLIMINÉS l'état des coulisses : pactes formés et actions
-  // votées en direct. C'est leur "récompense" punitive — ils voient tout mais ne
-  // peuvent rien faire.
+  // Diffuse aux observateurs (joueurs morts + vivants hors-pacte pendant les
+  // phases d'action) l'état des coulisses : pactes formés et actions choisies
+  // en direct (preview ou validée).
   _broadcastSpectator() {
-    const dead = this.players.filter((p) => p.eliminated && !p.isBot)
-    if (dead.length === 0) return
+    const inPactPhase =
+      this.phase === 'team_reveal' || this.phase === 'choice' || this.phase === 'voting'
+
+    const observers = this.players.filter((p) => {
+      if (p.isBot) return false
+      if (p.eliminated) return true
+      // Vivant hors-pacte : observer pendant les phases d'action uniquement
+      const validPartners = this.validTeams.get(p.id) || []
+      return inPactPhase && validPartners.length === 0
+    })
+    if (observers.length === 0) return
 
     // Pactes : on prend tous les joueurs vivants et on regroupe par mutualité
     const grouped = new Set()
@@ -907,9 +943,14 @@ class GameRoom {
       this.teamChoices.forEach((picks, pid) => { teamPicks[pid] = picks })
     }
 
-    // Actions votées (qui a voté quoi)
+    // Actions affichées : on prend l'action validée si dispo, sinon la preview
+    // (= sélection en cours qui peut encore changer). Le client affiche les
+    // deux pareil — Fred verra les joueurs "changer d'avis" en temps réel.
     const actions = {}
     this.choices.forEach((choice, pid) => { actions[pid] = choice.action })
+    this.choicePreviews.forEach((action, pid) => {
+      if (!actions[pid]) actions[pid] = action
+    })
 
     const payload = {
       phase: this.phase,
@@ -919,7 +960,7 @@ class GameRoom {
       teamPicks,
       actions,
     }
-    dead.forEach((d) => this.io.to(d.id).emit('spectator:update', payload))
+    observers.forEach((d) => this.io.to(d.id).emit('spectator:update', payload))
   }
 
   stateForAll() {

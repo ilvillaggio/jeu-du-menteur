@@ -1,23 +1,22 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../context/GameContext'
 import Avatar from '../components/Avatar'
+import PactsLiveView from '../components/PactsLiveView'
 
 // Affiché quand le joueur est mort. Vue plein écran qui change selon la phase :
-//   - team_selection / intermission : classement simple (en attente des vivants)
-//   - team_reveal / choice / voting : groupes par pacte, encarts colorés selon
-//     l'action choisie par chaque vivant (coopère/profite/trahit/en attente)
+//   - team_selection / intermission : classement (en attente des vivants)
+//   - team_reveal / choice / voting : groupes par pacte avec encarts colorés
+//     selon l'action choisie par chaque vivant (vert/or/rouge ou en attente)
 //   - results : classement avec les gains/pertes de la manche
 export default function EliminatedPage() {
   const { phase, players, playerId, spectator, roundResults, round, totalRounds } = useGame()
   const me = players.find((p) => p.id === playerId)
 
-  // Pendant les phases où les pactes sont en jeu, on affiche les coulisses.
   const showPacts =
     phase === 'team_reveal' || phase === 'choice' || phase === 'voting'
 
   return (
     <div className="min-h-screen flex flex-col px-4 pt-5 pb-6 safe-bottom max-w-lg mx-auto w-full">
-      {/* Header permanent : "ÉLIMINÉ" — animation au montage uniquement */}
       <motion.div
         initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -39,12 +38,10 @@ export default function EliminatedPage() {
         )}
       </motion.div>
 
-      {/* Indicateur phase courante */}
       <p className="text-center text-muted text-[11px] uppercase tracking-widest mb-3">
         Manche {round} / {totalRounds || 5} · {phaseLabel(phase)}
       </p>
 
-      {/* Vue dynamique selon phase */}
       <div className="flex-1">
         <AnimatePresence mode="wait">
           {showPacts ? (
@@ -55,7 +52,7 @@ export default function EliminatedPage() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25 }}
             >
-              <PactsView spectator={spectator} />
+              <PactsLiveView spectator={spectator} />
             </motion.div>
           ) : (
             <motion.div
@@ -79,129 +76,6 @@ export default function EliminatedPage() {
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Vue "groupes par pacte" — affichée pendant team_reveal / choice / voting.
-// Chaque membre a son encart coloré selon l'action qu'il a choisie.
-// ═══════════════════════════════════════════════════════════════════════════
-function PactsView({ spectator }) {
-  const data = spectator || { pacts: [], solos: [], actions: {} }
-  const hasPacts = data.pacts && data.pacts.length > 0
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-xs uppercase tracking-widest text-teal-light mb-1">
-        Pactes en cours {hasPacts && `(${data.pacts.length})`}
-      </h3>
-
-      {hasPacts ? (
-        data.pacts.map((pact, i) => (
-          <div
-            key={i}
-            className={`rounded-2xl border-2 p-3 ${
-              pact.length === 3 ? 'border-gold/40 bg-gold/5' : 'border-teal/40 bg-teal/5'
-            }`}
-          >
-            <p className="text-[10px] text-muted uppercase tracking-widest mb-2">
-              {pact.length === 3 ? 'Pacte à 3' : 'Pacte à 2'}
-            </p>
-            <div className="space-y-2">
-              {pact.map((m) => (
-                <PlayerCard
-                  key={m.id}
-                  member={m}
-                  action={data.actions?.[m.id]}
-                />
-              ))}
-            </div>
-          </div>
-        ))
-      ) : (
-        <p className="text-center text-muted text-sm py-4">
-          Aucun pacte formé cette manche.
-        </p>
-      )}
-
-      {data.solos && data.solos.length > 0 && (
-        <div className="rounded-2xl border border-border bg-surface/40 p-3">
-          <p className="text-[10px] text-muted uppercase tracking-widest mb-2">
-            Hors pacte ({data.solos.length})
-          </p>
-          <div className="space-y-2">
-            {data.solos.map((s) => (
-              <PlayerCard key={s.id} member={s} action={null} solo />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Encart d'un joueur, coloré selon l'action qu'il a votée.
-// La couleur du fond transitionne en douceur quand l'action arrive,
-// et le badge "pop" en spring → on voit chaque vote arriver un par un.
-function PlayerCard({ member, action, solo }) {
-  const cfg = ACTION_CONFIG[action] || (solo ? SOLO_CONFIG : PENDING_CONFIG)
-  return (
-    <motion.div
-      animate={{ scale: action ? [1, 1.025, 1] : 1 }}
-      transition={{ duration: 0.45, ease: 'easeOut' }}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 transition-colors duration-300 ${cfg.cls}`}
-    >
-      <Avatar src={member.avatar} className="w-8 h-8 text-xl" animated={false} />
-      <span className="font-semibold text-white text-sm flex-1 truncate">{member.name}</span>
-      <AnimatePresence mode="wait" initial={false}>
-        {action ? (
-          <motion.span
-            key={action}
-            initial={{ opacity: 0, scale: 0.5, y: -3 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-            className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.badge}`}
-          >
-            {cfg.icon} {cfg.txt}
-          </motion.span>
-        ) : (
-          <motion.span
-            key="pending"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.7 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="text-[10px] text-muted italic"
-          >
-            {solo ? 'Hors pacte' : 'en attente…'}
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
-
-const ACTION_CONFIG = {
-  cooperer: {
-    cls: 'border-teal/60 bg-teal/15',
-    badge: 'bg-teal/30 text-teal-light',
-    icon: '🤝', txt: 'Coopère',
-  },
-  profiter: {
-    cls: 'border-gold/60 bg-gold/15',
-    badge: 'bg-gold/30 text-gold-light',
-    icon: '😏', txt: 'Profite',
-  },
-  trahir: {
-    cls: 'border-crimson/60 bg-crimson/15',
-    badge: 'bg-crimson/30 text-crimson-light',
-    icon: '🗡️', txt: 'Trahit',
-  },
-}
-const PENDING_CONFIG = { cls: 'border-border bg-surface' }
-const SOLO_CONFIG    = { cls: 'border-border bg-surface/60' }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Vue "classement" — affichée pendant team_selection / intermission / results
-// ═══════════════════════════════════════════════════════════════════════════
 function ScoreboardView({ players, playerId, deltas, waitingMessage }) {
   const sorted = [...players].sort((a, b) => b.score - a.score)
 
@@ -254,9 +128,6 @@ function ScoreboardView({ players, playerId, deltas, waitingMessage }) {
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Helpers
-// ═══════════════════════════════════════════════════════════════════════════
 function extractDeltas(roundResults) {
   if (!roundResults?.reveals) return null
   const map = {}

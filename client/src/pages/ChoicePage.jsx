@@ -9,6 +9,7 @@ import PactChatDrawer from '../components/PactChatDrawer'
 import MessagesIconButton from '../components/MessagesIconButton'
 import ScoreboardDrawer from '../components/ScoreboardDrawer'
 import Avatar from '../components/Avatar'
+import PactsLiveView from '../components/PactsLiveView'
 
 const ACTIONS = [
   {
@@ -44,7 +45,7 @@ const ACTIONS = [
 ]
 
 export default function ChoicePage() {
-  const { players, playerId, round, totalRounds, isActive, myValidPartners, myMissions, pactMessages } = useGame()
+  const { players, playerId, round, totalRounds, isActive, myValidPartners, myMissions, pactMessages, spectator } = useGame()
   const { socket } = useSocket()
 
   const isFinalRound = round === (totalRounds || 5)
@@ -61,6 +62,12 @@ export default function ChoicePage() {
   const unreadPactMsgs = pactMessages.filter((m) => m.from !== playerId && !m.read).length
   const hasPact = validPartnerPlayers.length > 0
 
+  function pickAction(actionId) {
+    setAction(actionId)
+    // Broadcast la sélection en cours aux observateurs (morts + hors-pacte)
+    socket.emit('player:choice_preview', { action: actionId })
+  }
+
   function submit() {
     if (!action || !isActive) return
     socket.emit('player:choice', { action, mise: 0 })
@@ -69,15 +76,31 @@ export default function ChoicePage() {
 
   const canSubmit = action && !submitted && isActive
 
-  // Hors-jeu ce tour
+  // Hors-jeu ce tour : aucun pacte mutuel formé. On en profite pour observer
+  // les autres pactes en direct (mode spectateur vivant).
   if (!isActive) {
     return (
       <div className="min-h-screen flex flex-col px-4 pt-5 pb-6 safe-bottom max-w-lg mx-auto w-full">
         <IdentityCard />
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-          <span className="text-5xl">😶</span>
-          <p className="text-white font-bold text-xl">Tu passes cette manche</p>
-          <p className="text-muted">Aucun pacte mutuel — en attente des résultats.</p>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+          className="text-center mb-5 p-4 rounded-2xl border-2 border-crimson/40 bg-crimson/10"
+        >
+          <p className="text-4xl mb-1">🤡</p>
+          <h2 className="text-lg font-bold text-crimson-light tracking-wide">Pacte loupé</h2>
+          <p className="text-white text-xs mt-1.5 opacity-80">
+            Personne ne t'a choisi en retour. Choisis mieux la prochaine fois…
+          </p>
+        </motion.div>
+
+        <p className="text-center text-muted text-[11px] uppercase tracking-widest mb-3">
+          Manche {round} · Tu observes les pactes des autres
+        </p>
+
+        <div className="flex-1">
+          <PactsLiveView spectator={spectator} />
         </div>
       </div>
     )
@@ -173,7 +196,7 @@ export default function ChoicePage() {
                 {ACTIONS.map((a) => (
                   <button
                     key={a.id}
-                    onClick={() => setAction(a.id)}
+                    onClick={() => pickAction(a.id)}
                     className={`w-full text-left px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors duration-150 min-h-[80px] ${
                       action === a.id ? a.active : a.idle
                     }`}

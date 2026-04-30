@@ -204,6 +204,13 @@ io.on('connection', (socket) => {
     room.registerChoice(socket.id, choice)
   })
 
+  // ─── Preview de l'action (sélection avant validation) ───
+  socket.on('player:choice_preview', ({ action }) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return
+    room.registerChoicePreview(socket.id, action)
+  })
+
   // ─── Pact chat : message à tous les membres du pacte mutuel ───
   socket.on('pact:send', ({ text }, cb = () => {}) => {
     const room = rooms.get(socket.data.roomCode)

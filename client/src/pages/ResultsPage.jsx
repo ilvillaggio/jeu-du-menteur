@@ -18,7 +18,14 @@ export default function ResultsPage() {
   }, [roundResults?.round])
 
   if (!roundResults) return null
-  if (!battleDone) return <BattleAnimation onDone={() => setBattleDone(true)} />
+
+  // Si le joueur était hors-jeu cette manche (aucun pacte mutuel) ou déjà mort,
+  // pas d'animation de bagarre — il n'a "rien fait", donc on saute direct au
+  // classement.
+  const myReveal = roundResults.reveals?.find((r) => r.playerId === playerId)
+  const skipBattle = !!(myReveal?.inactive || myReveal?.eliminated)
+
+  if (!skipBattle && !battleDone) return <BattleAnimation onDone={() => setBattleDone(true)} />
 
   const deltaMap = {}
   if (roundResults.reveals) {

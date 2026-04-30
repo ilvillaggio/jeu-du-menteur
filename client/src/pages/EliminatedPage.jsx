@@ -137,27 +137,44 @@ function PactsView({ spectator }) {
   )
 }
 
-// Encart d'un joueur, coloré selon l'action qu'il a votée
+// Encart d'un joueur, coloré selon l'action qu'il a votée.
+// La couleur du fond transitionne en douceur quand l'action arrive,
+// et le badge "pop" en spring → on voit chaque vote arriver un par un.
 function PlayerCard({ member, action, solo }) {
   const cfg = ACTION_CONFIG[action] || (solo ? SOLO_CONFIG : PENDING_CONFIG)
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.97 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.2 }}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 ${cfg.cls}`}
+      animate={{ scale: action ? [1, 1.025, 1] : 1 }}
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 transition-colors duration-300 ${cfg.cls}`}
     >
       <Avatar src={member.avatar} className="w-8 h-8 text-xl" animated={false} />
       <span className="font-semibold text-white text-sm flex-1 truncate">{member.name}</span>
-      {action ? (
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.badge}`}>
-          {cfg.icon} {cfg.txt}
-        </span>
-      ) : solo ? (
-        <span className="text-[10px] text-muted italic">Hors pacte</span>
-      ) : (
-        <span className="text-[10px] text-muted italic">en attente…</span>
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        {action ? (
+          <motion.span
+            key={action}
+            initial={{ opacity: 0, scale: 0.5, y: -3 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+            className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.badge}`}
+          >
+            {cfg.icon} {cfg.txt}
+          </motion.span>
+        ) : (
+          <motion.span
+            key="pending"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.7 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="text-[10px] text-muted italic"
+          >
+            {solo ? 'Hors pacte' : 'en attente…'}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

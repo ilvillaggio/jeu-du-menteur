@@ -60,6 +60,7 @@ class GameRoom {
       teamSubmitted: false, missionAcknowledged: false, missions: [],
       isBot: false,
       online: true,
+      eliminated: false, // Score < 0 → mort, ne joue plus
       token, // identifiant stable côté client (localStorage), pour reconnexion
     })
     socket.data.playerId = socket.id
@@ -101,6 +102,7 @@ class GameRoom {
       teamSubmitted: false, missionAcknowledged: false, missions: [],
       isBot: true,
       online: true,
+      eliminated: false,
     })
   }
 
@@ -169,12 +171,25 @@ class GameRoom {
 
   // Phase 1 : sélection d'équipe
   _startRound() {
+    // Si moins de 2 joueurs vivants, la partie se termine immédiatement.
+    if (this.aliveCount() < 2) {
+      this._startFinal()
+      return
+    }
     this.round++
     this.choices.clear()
     this.teamChoices.clear()
     this.validTeams.clear()
     this.firstVoterThisRound = null
-    this.players.forEach((p) => { p.voted = false; p.teamSubmitted = false })
+    this.players.forEach((p) => {
+      p.voted = false
+      p.teamSubmitted = false
+      // Joueurs éliminés : auto-soumission vide (pas de pacte) pour ne pas bloquer la partie
+      if (p.eliminated) {
+        p.teamSubmitted = true
+        this.teamChoices.set(p.id, [])
+      }
+    })
     this.phase = 'team_selection'
 
     this.players.forEach((p) => {
@@ -188,10 +203,17 @@ class GameRoom {
   registerTeamChoice(playerId, partners) {
     if (this.phase !== 'team_selection') return
     if (this.teamChoices.has(playerId)) return  // évite les doubles soumissions
-    this.teamChoices.set(playerId, partners)
 
     const p = this.players.find((x) => x.id === playerId)
-    if (p) p.teamSubmitted = true
+    if (!p || p.eliminated) return // les morts ne participent plus
+
+    // On filtre aussi les éliminés des choix possibles (impossible de prendre un mort comme partenaire)
+    const cleanedPartners = (partners || []).filter((id) => {
+      const target = this.players.find((x) => x.id === id)
+      return target && !target.eliminated
+    })
+    this.teamChoices.set(playerId, cleanedPartners)
+    p.teamSubmitted = true
 
     const submitted = this.teamChoices.size
     const total = this.players.length
@@ -369,12 +391,21 @@ class GameRoom {
     const reveals = []
 
     this.players.forEach((p) => {
+      // Joueur déjà éliminé (score < 0) : ne joue plus
+      if (p.eliminated) {
+        reveals.push({ playerId: p.id, name: p.name, avatar: p.avatar, action: null, delta: 0, eliminated: true })
+        const hist = this.playerHistory.get(p.id) || []
+        hist.push({ round: this.round, action: null, mise: 0, partners: [], chosenIds: [], delta: 0 })
+        this.playerHistory.set(p.id, hist)
+        return
+      }
+
       const validPartners = this.validTeams.get(p.id) || []
 
       if (validPartners.length === 0) {
-        // Hors-jeu ce tour : delta = 0
+        // Hors-jeu ce tour : delta = 0, action: null
+        // (l'intention ne compte pas pour les missions — seule l'action effective)
         reveals.push({ playerId: p.id, name: p.name, avatar: p.avatar, action: null, delta: 0, inactive: true })
-        // Still record an empty entry so consecutive-checks don't carry across gaps
         const hist = this.playerHistory.get(p.id) || []
         hist.push({
           round: this.round, action: null, mise: 0,
@@ -445,9 +476,20 @@ class GameRoom {
     // Check mission completions for all players
     this._checkMissions()
 
+    // Élimination : tout joueur dont le score est passé sous 0 est marqué "mort".
+    // On signale la mort dans le reveal correspondant pour l'animation côté client.
+    this.players.forEach((p) => {
+      if (!p.eliminated && p.score < 0) {
+        p.eliminated = true
+        const r = reveals.find((rv) => rv.playerId === p.id)
+        if (r) r.justEliminated = true
+      }
+    })
+
     const results = { reveals, round: this.round }
     this.phase = 'results'
-    this.players.forEach((p) => { p.resultsAcknowledged = false })
+    // Joueurs éliminés : auto-ack pour ne pas bloquer le passage à l'intermission
+    this.players.forEach((p) => { p.resultsAcknowledged = !!p.eliminated })
 
     this.io.to(this.code).emit('game:results', results)
     this.io.to(this.code).emit('game:state', {
@@ -576,7 +618,7 @@ class GameRoom {
             }
             break
           }
-          case 'h4': { // Termine la partie avec exactement 0 trahisons
+          case 'h4': { // Termine la partie avec exactement 0 trahisons (action effective)
             if (this.round === this.totalRounds) {
               const neverBetrayed = hist.every((h) => h.action !== 'trahir')
               if (neverBetrayed) m.completed = true
@@ -622,7 +664,8 @@ class GameRoom {
 
   _startIntermission() {
     this.phase = 'intermission'
-    this.players.forEach((p) => { p.intermissionAcknowledged = false })
+    // Joueurs éliminés : auto-ack pour ne pas bloquer le passage à la manche suivante
+    this.players.forEach((p) => { p.intermissionAcknowledged = !!p.eliminated })
 
     this.io.to(this.code).emit('game:intermission', {
       scores: this.publicPlayers().map((p) => ({ id: p.id, name: p.name, score: p.score })),
@@ -767,8 +810,13 @@ class GameRoom {
       id: p.id, name: p.name, avatar: p.avatar, role: p.role,
       score: p.score, ready: p.ready, voted: p.voted, teamSubmitted: p.teamSubmitted,
       online: p.online !== false,
+      eliminated: !!p.eliminated,
     }))
   }
+
+  // Helpers : joueurs vivants uniquement
+  alivePlayers() { return this.players.filter((p) => !p.eliminated) }
+  aliveCount()   { return this.alivePlayers().length }
 
   stateForAll() {
     return {

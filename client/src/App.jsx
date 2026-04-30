@@ -12,6 +12,7 @@ import VotingPage from './pages/VotingPage'
 import ResultsPage from './pages/ResultsPage'
 import IntermissionPage from './pages/IntermissionPage'
 import FinalPage from './pages/FinalPage'
+import EliminatedPage from './pages/EliminatedPage'
 import GameSocketBridge from './components/GameSocketBridge'
 import MissionCelebration from './components/MissionCelebration'
 
@@ -22,18 +23,28 @@ const pageVariants = {
 }
 
 function PhaseRouter() {
-  const { phase } = useGame()
+  const { phase, players, playerId } = useGame()
+
+  // Si le joueur est éliminé (score < 0), il voit l'écran "Éliminé" pour
+  // toutes les phases actives (sauf le final où il voit son rang).
+  const me = players?.find((p) => p.id === playerId)
+  const isEliminated = !!me?.eliminated
+  const showEliminatedScreen = isEliminated && (
+    phase === 'team_selection' || phase === 'team_reveal' ||
+    phase === 'choice' || phase === 'voting' ||
+    phase === 'results' || phase === 'intermission'
+  )
 
   const pages = {
     lobby:          <LobbyPage />,
     waiting:        <WaitingRoomPage />,
     mission_reveal: <MissionRevealPage />,
-    team_selection: <TeamSelectionPage />,
-    team_reveal:    <TeamRevealPage />,
-    choice:         <ChoicePage />,
-    voting:         <VotingPage />,
-    results:        <ResultsPage />,
-    intermission:   <IntermissionPage />,
+    team_selection: showEliminatedScreen ? <EliminatedPage /> : <TeamSelectionPage />,
+    team_reveal:    showEliminatedScreen ? <EliminatedPage /> : <TeamRevealPage />,
+    choice:         showEliminatedScreen ? <EliminatedPage /> : <ChoicePage />,
+    voting:         showEliminatedScreen ? <EliminatedPage /> : <VotingPage />,
+    results:        showEliminatedScreen ? <EliminatedPage /> : <ResultsPage />,
+    intermission:   showEliminatedScreen ? <EliminatedPage /> : <IntermissionPage />,
     final:          <FinalPage />,
   }
 

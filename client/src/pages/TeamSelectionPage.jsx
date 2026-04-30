@@ -19,7 +19,8 @@ export default function TeamSelectionPage() {
   const [whispersOpen, setWhispersOpen] = useState(false)
   const [scoreboardOpen, setScoreboardOpen] = useState(false)
 
-  const others = players.filter((p) => p.id !== playerId)
+  // On ne propose que les joueurs vivants (pas d'éliminés comme partenaires)
+  const others = players.filter((p) => p.id !== playerId && !p.eliminated)
   const completedMissions = myMissions.filter((m) => m.completed).length
 
   function toggle(id) {

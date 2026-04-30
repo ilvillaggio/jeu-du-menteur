@@ -775,7 +775,9 @@ class GameRoom {
       // Délai standard. En mode test pendant la sélection d'équipe ET pendant le
       // choix d'action, on retarde fortement pour laisser le joueur humain soumettre
       // d'abord (et que les bots puissent matcher / co-trahir si besoin).
-      const isTestSlowPhase = this.testMode &&
+      // Si le humain est mort, on reprend un délai normal — pas la peine d'attendre.
+      const humanAlive = this.players.some((x) => !x.isBot && !x.eliminated)
+      const isTestSlowPhase = this.testMode && humanAlive &&
         (this.phase === 'team_selection' || this.phase === 'choice')
       const delay = isTestSlowPhase
         ? 3500 + Math.random() * 2000
@@ -802,39 +804,51 @@ class GameRoom {
           if (this.phase !== 'team_selection') return
           if (bot.teamSubmitted) return // déjà soumis (re-trigger après humain)
 
-          // Mode test : si le humain a déjà soumis ET m'a choisi → 90% de chance
-          // que je matche ses choix pour qu'on forme un pacte cohérent.
-          if (this.testMode) {
-            const human = this.players.find((x) => !x.isBot)
-            const humanChoices = human ? this.teamChoices.get(human.id) : null
-            if (humanChoices && humanChoices.includes(bot.id) && Math.random() < 0.9) {
-              let matchedPicks
-              if (humanChoices.length === 1) {
-                // Pacte à 2 : le bot choisit uniquement le humain
-                matchedPicks = [human.id]
-              } else {
-                // Pacte à 3 : le bot choisit le humain + l'autre choisi par le humain
-                const otherInPact = humanChoices.find((id) => id !== bot.id)
-                matchedPicks = otherInPact ? [human.id, otherInPact] : [human.id]
-              }
-              this.registerTeamChoice(bot.id, matchedPicks)
-              return
-            }
+          // Partenaires possibles : tous les vivants sauf soi-même
+          const potentials = this.players.filter((x) => x.id !== bot.id && !x.eliminated)
+          if (potentials.length === 0) {
+            this.registerTeamChoice(bot.id, [])
+            return
           }
 
-          // Comportement aléatoire normal
-          const others = this.players.filter((x) => x.id !== bot.id)
-          const n = Math.random() < 0.5 ? 1 : 2
-          let picks
-          const human = this.testMode
-            ? this.players.find((x) => !x.isBot && x.id !== bot.id)
+          // 1) Si quelqu'un (humain ou autre bot) m'a déjà choisi → je matche
+          //    avec une forte probabilité pour qu'un pacte mutuel se forme.
+          const incoming = []
+          for (const [pid, picks] of this.teamChoices.entries()) {
+            if (pid === bot.id) continue
+            const player = this.players.find((x) => x.id === pid)
+            if (!player || player.eliminated) continue
+            if (picks.includes(bot.id)) incoming.push({ pid, picks })
+          }
+          if (incoming.length > 0 && Math.random() < (this.testMode ? 0.9 : 0.7)) {
+            const c = incoming[0]
+            let matchedPicks
+            if (c.picks.length === 1) {
+              // L'autre veut un pacte à 2 → je le choisis uniquement
+              matchedPicks = [c.pid]
+            } else {
+              // L'autre veut un pacte à 3 → je matche le triplet exact
+              const otherInPact = c.picks.find((id) => id !== bot.id)
+              matchedPicks = otherInPact ? [c.pid, otherInPact] : [c.pid]
+            }
+            this.registerTeamChoice(bot.id, matchedPicks)
+            return
+          }
+
+          // 2) Personne ne m'a choisi → tirage aléatoire parmi les vivants.
+          //    En mode test avec humain vivant, biais pour l'inclure (pour
+          //    qu'il puisse plus facilement former un pacte).
+          const n = potentials.length >= 2 ? (Math.random() < 0.5 ? 1 : 2) : 1
+          const livingHuman = this.testMode
+            ? potentials.find((x) => !x.isBot)
             : null
-          if (human && Math.random() < 0.5) {
-            const rest = others.filter((x) => x.id !== human.id)
+          let picks
+          if (livingHuman && Math.random() < 0.5) {
+            const rest = potentials.filter((x) => x.id !== livingHuman.id)
             const extras = [...rest].sort(() => Math.random() - 0.5).slice(0, n - 1).map((x) => x.id)
-            picks = [human.id, ...extras]
+            picks = [livingHuman.id, ...extras]
           } else {
-            picks = [...others].sort(() => Math.random() - 0.5).slice(0, n).map((x) => x.id)
+            picks = [...potentials].sort(() => Math.random() - 0.5).slice(0, n).map((x) => x.id)
           }
           this.registerTeamChoice(bot.id, picks)
         }, delay)

@@ -223,6 +223,9 @@ class GameRoom {
       teamVotesCount: submitted, totalPlayers: total,
     })
 
+    // Update les spectateurs morts (ils voient les choix d'équipe en direct)
+    this._broadcastSpectator()
+
     // En mode test : dès que le joueur humain a soumis, on annule les soumissions
     // des bots qu'il a choisis (pour qu'ils puissent matcher), puis on les re-déclenche.
     if (this.testMode && p && !p.isBot) {
@@ -312,6 +315,9 @@ class GameRoom {
 
     this.phase = 'team_reveal'
 
+    // Update les spectateurs morts : ils voient les pactes formés
+    this._broadcastSpectator()
+
     // Liste publique des joueurs qui se sont fait avoir (aucun pacte mutuel)
     const trickedPlayers = this.players
       .filter((p) => (this.validTeams.get(p.id) || []).length === 0)
@@ -380,6 +386,21 @@ class GameRoom {
     })
     // Only the voter switches to the "waiting" view
     this.io.to(playerId).emit('game:state', { phase: 'voting', votesCount, totalPlayers: activeCount })
+
+    // Update les spectateurs morts (ils voient les votes en direct)
+    this._broadcastSpectator()
+
+    // Mode test : si le humain trahit, on force tous les bots de son pacte à
+    // trahir aussi → double-trahison → -75 → élimination garantie. C'est un
+    // raccourci pour tester l'écran "éliminé" et les coulisses.
+    if (this.testMode && p && !p.isBot && choice.action === 'trahir') {
+      validPartners.forEach((partnerId) => {
+        const bot = this.players.find((x) => x.id === partnerId && x.isBot)
+        if (bot && !bot.voted) {
+          this.registerChoice(bot.id, { action: 'trahir', mise: 0 })
+        }
+      })
+    }
 
     if (votesCount >= activeCount) {
       setTimeout(() => this._resolveRound(), 1000)
@@ -735,10 +756,12 @@ class GameRoom {
   _triggerBots() {
     const bots = this.players.filter((p) => p.isBot)
     bots.forEach((bot) => {
-      // Délai standard. En mode test pendant la sélection d'équipe, on retarde fortement
-      // pour laisser le joueur humain soumettre d'abord (et que les bots puissent matcher).
-      const isTestTeamPhase = this.testMode && this.phase === 'team_selection'
-      const delay = isTestTeamPhase
+      // Délai standard. En mode test pendant la sélection d'équipe ET pendant le
+      // choix d'action, on retarde fortement pour laisser le joueur humain soumettre
+      // d'abord (et que les bots puissent matcher / co-trahir si besoin).
+      const isTestSlowPhase = this.testMode &&
+        (this.phase === 'team_selection' || this.phase === 'choice')
+      const delay = isTestSlowPhase
         ? 3500 + Math.random() * 2000
         : 800 + Math.random() * 1500
 
@@ -815,9 +838,22 @@ class GameRoom {
   // ─── Missions ───
 
   _assignMissions() {
-    // Each player gets exactly 1 easy + 1 hard mission
-    const easy = [...MISSIONS.filter((m) => m.difficulty === 'easy')].sort(() => Math.random() - 0.5)
-    const hard = [...MISSIONS.filter((m) => m.difficulty === 'hard')].sort(() => Math.random() - 0.5)
+    // Each player gets exactly 1 easy + 1 hard mission.
+    // Exclut les missions impossibles selon le nombre de manches choisi
+    // (ex. "trahir 3 manches différentes" sur une partie de 2 manches).
+    const N = this.totalRounds
+    const impossible = new Set()
+    if (N < 2) { impossible.add('e1'); impossible.add('e6') }     // besoin de 2+ manches
+    if (N < 3) {
+      impossible.add('h8')  // profite 3 manches
+      impossible.add('h11') // trahis 3 manches
+      impossible.add('h14') // coop 3 d'affilée
+      impossible.add('h15') // pacte à 3 dans 3 manches
+    }
+    const easy = MISSIONS.filter((m) => m.difficulty === 'easy' && !impossible.has(m.id))
+                          .sort(() => Math.random() - 0.5)
+    const hard = MISSIONS.filter((m) => m.difficulty === 'hard' && !impossible.has(m.id))
+                          .sort(() => Math.random() - 0.5)
     this.players.forEach((p, i) => {
       p.missions = [easy[i % easy.length], hard[i % hard.length]]
     })
@@ -837,6 +873,54 @@ class GameRoom {
   // Helpers : joueurs vivants uniquement
   alivePlayers() { return this.players.filter((p) => !p.eliminated) }
   aliveCount()   { return this.alivePlayers().length }
+
+  // Diffuse aux joueurs ÉLIMINÉS l'état des coulisses : pactes formés et actions
+  // votées en direct. C'est leur "récompense" punitive — ils voient tout mais ne
+  // peuvent rien faire.
+  _broadcastSpectator() {
+    const dead = this.players.filter((p) => p.eliminated && !p.isBot)
+    if (dead.length === 0) return
+
+    // Pactes : on prend tous les joueurs vivants et on regroupe par mutualité
+    const grouped = new Set()
+    const pacts = []
+    this.players.forEach((p) => {
+      if (p.eliminated || grouped.has(p.id)) return
+      const partners = this.validTeams.get(p.id) || []
+      if (partners.length === 0) return
+      const group = [p.id, ...partners]
+      group.forEach((id) => grouped.add(id))
+      pacts.push(group.map((id) => {
+        const pl = this.players.find((x) => x.id === id)
+        return { id, name: pl?.name || '?', avatar: pl?.avatar || '🎭' }
+      }))
+    })
+
+    // Solo (joueurs vivants sans pacte)
+    const solos = this.players
+      .filter((p) => !p.eliminated && !grouped.has(p.id))
+      .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar }))
+
+    // Choix d'équipe en cours (uniquement si phase team_selection)
+    const teamPicks = {}
+    if (this.phase === 'team_selection' || this.phase === 'team_reveal') {
+      this.teamChoices.forEach((picks, pid) => { teamPicks[pid] = picks })
+    }
+
+    // Actions votées (qui a voté quoi)
+    const actions = {}
+    this.choices.forEach((choice, pid) => { actions[pid] = choice.action })
+
+    const payload = {
+      phase: this.phase,
+      round: this.round,
+      pacts,
+      solos,
+      teamPicks,
+      actions,
+    }
+    dead.forEach((d) => this.io.to(d.id).emit('spectator:update', payload))
+  }
 
   stateForAll() {
     return {

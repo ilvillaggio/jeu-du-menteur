@@ -32,6 +32,8 @@ const initialState = {
   whispers: [],           // [{ id, from, fromName, to, toName, text, at, read? }]
   // Chat du pacte (réinitialisé à chaque nouvelle manche)
   pactMessages: [],       // [{ id, from, fromName, fromAvatar, text, at, read? }]
+  // Mode spectateur (uniquement quand le joueur est éliminé) : vue des coulisses
+  spectator: null,        // { phase, round, pacts, solos, teamPicks, actions } | null
 }
 
 function reducer(state, action) {

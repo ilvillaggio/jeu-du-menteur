@@ -64,6 +64,7 @@ export default function GameSocketBridge() {
     socket.on('room:joined', ({ roomCode }) => setRoom(roomCode))
     socket.on('whisper:received', (whisper) => addWhisper({ ...whisper, read: false }))
     socket.on('pact:received', (msg) => addPactMessage({ ...msg, read: false }))
+    socket.on('spectator:update', (data) => updateGame({ spectator: data }))
 
     return () => {
       socket.off('game:state')
@@ -77,6 +78,7 @@ export default function GameSocketBridge() {
       socket.off('room:joined')
       socket.off('whisper:received')
       socket.off('pact:received')
+      socket.off('spectator:update')
     }
   }, [socket])
 

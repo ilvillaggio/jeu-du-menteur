@@ -201,9 +201,27 @@ class GameRoom {
       teamVotesCount: submitted, totalPlayers: total,
     })
 
-    // En mode test : dès que le joueur humain a soumis, on redéclenche les bots
-    // pour qu'ils puissent matcher ses choix et favoriser des pactes réussis.
+    // En mode test : dès que le joueur humain a soumis, on annule les soumissions
+    // des bots qu'il a choisis (pour qu'ils puissent matcher), puis on les re-déclenche.
     if (this.testMode && p && !p.isBot) {
+      partners.forEach((botId) => {
+        const bot = this.players.find((x) => x.id === botId && x.isBot)
+        if (bot && bot.teamSubmitted) {
+          bot.teamSubmitted = false
+          this.teamChoices.delete(bot.id)
+        }
+      })
+      // Si pacte à 3 : on annule aussi les bots qui sont éventuellement entre eux pour pouvoir aligner les 3
+      if (partners.length === 2) {
+        partners.forEach((botId) => {
+          // Le 3e du pacte (= l'autre choisi par le humain) doit aussi pouvoir matcher
+          const otherBot = this.players.find((x) => x.id === botId && x.isBot)
+          if (otherBot && otherBot.teamSubmitted) {
+            otherBot.teamSubmitted = false
+            this.teamChoices.delete(otherBot.id)
+          }
+        })
+      }
       this._triggerBots()
     }
 
@@ -654,7 +672,12 @@ class GameRoom {
   _triggerBots() {
     const bots = this.players.filter((p) => p.isBot)
     bots.forEach((bot) => {
-      const delay = 800 + Math.random() * 1500
+      // Délai standard. En mode test pendant la sélection d'équipe, on retarde fortement
+      // pour laisser le joueur humain soumettre d'abord (et que les bots puissent matcher).
+      const isTestTeamPhase = this.testMode && this.phase === 'team_selection'
+      const delay = isTestTeamPhase
+        ? 3500 + Math.random() * 2000
+        : 800 + Math.random() * 1500
 
       if (this.phase === 'mission_reveal' && !bot.missionAcknowledged) {
         setTimeout(() => {
@@ -677,12 +700,12 @@ class GameRoom {
           if (this.phase !== 'team_selection') return
           if (bot.teamSubmitted) return // déjà soumis (re-trigger après humain)
 
-          // Mode test : si le humain a déjà soumis ET m'a choisi → 75% de chance
+          // Mode test : si le humain a déjà soumis ET m'a choisi → 90% de chance
           // que je matche ses choix pour qu'on forme un pacte cohérent.
           if (this.testMode) {
             const human = this.players.find((x) => !x.isBot)
             const humanChoices = human ? this.teamChoices.get(human.id) : null
-            if (humanChoices && humanChoices.includes(bot.id) && Math.random() < 0.75) {
+            if (humanChoices && humanChoices.includes(bot.id) && Math.random() < 0.9) {
               let matchedPicks
               if (humanChoices.length === 1) {
                 // Pacte à 2 : le bot choisit uniquement le humain

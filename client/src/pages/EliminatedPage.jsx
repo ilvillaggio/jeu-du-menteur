@@ -29,7 +29,7 @@ export default function EliminatedPage() {
           <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-noir/60 rounded-full border border-crimson/40">
             <Avatar src={me.avatar} className="w-6 h-6 text-xl" animated={false} />
             <span className="text-crimson-light font-semibold text-sm">{me.name}</span>
-            <span className="text-crimson font-mono text-sm">· {me.score} pts</span>
+            <span className="text-crimson font-mono text-sm uppercase tracking-widest">· Mort</span>
           </div>
         )}
       </motion.div>
@@ -55,7 +55,11 @@ export default function EliminatedPage() {
                 {p.name}
                 {p.eliminated && <span className="ml-2 text-crimson">💀</span>}
               </span>
-              <span className="font-bold text-white tabular-nums">{p.score}</span>
+              {p.eliminated ? (
+                <span className="font-bold text-crimson uppercase tracking-widest text-xs">Mort</span>
+              ) : (
+                <span className="font-bold text-white tabular-nums">{p.score}</span>
+              )}
             </div>
           ))}
         </div>

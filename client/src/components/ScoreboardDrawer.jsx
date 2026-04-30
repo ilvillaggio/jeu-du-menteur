@@ -112,23 +112,30 @@ export default function ScoreboardDrawer({ open, onClose }) {
               {/* Classement public */}
               <div className="space-y-3">
                 {sorted.map((p, i) => (
-                  <div key={p.id}>
+                  <div key={p.id} className={p.eliminated ? 'opacity-60' : ''}>
                     <div className="flex justify-between text-sm mb-1.5">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-muted w-5 shrink-0 text-center">#{i + 1}</span>
-                        <Avatar src={p.avatar} className="w-6 h-6 text-xl" />
+                        <Avatar src={p.avatar} className="w-6 h-6 text-xl" animated={!p.eliminated} />
                         <span className={`truncate ${p.id === playerId ? 'font-bold text-gold-light' : 'text-white'}`}>
                           {p.name}
-                          {i === 0 && <span className="ml-1">👑</span>}
+                          {i === 0 && !p.eliminated && <span className="ml-1">👑</span>}
+                          {p.eliminated && <span className="ml-1.5 text-crimson">💀</span>}
                         </span>
                       </div>
-                      <span className="font-bold text-white shrink-0">{p.score}</span>
+                      {p.eliminated ? (
+                        <span className="font-bold text-crimson uppercase tracking-widest text-[10px] shrink-0">Mort</span>
+                      ) : (
+                        <span className="font-bold text-white shrink-0">{p.score}</span>
+                      )}
                     </div>
                     <div className="h-1.5 bg-surface rounded-full overflow-hidden">
                       <motion.div
-                        className={`h-full rounded-full ${p.id === playerId ? 'bg-gold' : 'bg-border'}`}
+                        className={`h-full rounded-full ${
+                          p.eliminated ? 'bg-crimson/40' : p.id === playerId ? 'bg-gold' : 'bg-border'
+                        }`}
                         initial={{ width: 0 }}
-                        animate={{ width: `${(Math.max(0, p.score) / maxScore) * 100}%` }}
+                        animate={{ width: `${p.eliminated ? 0 : (Math.max(0, p.score) / maxScore) * 100}%` }}
                         transition={{ delay: i * 0.04, duration: 0.5 }}
                       />
                     </div>

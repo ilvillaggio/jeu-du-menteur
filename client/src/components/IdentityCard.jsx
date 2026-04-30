@@ -47,17 +47,21 @@ export default function IdentityCard() {
       </div>
       <div className="text-right shrink-0 pl-2 border-l border-border">
         <p className="text-[10px] text-muted uppercase tracking-widest">Score</p>
-        <div className="flex items-baseline gap-1.5 justify-end">
-          {missionBonus > 0 && (
-            <span
-              className="text-[11px] font-semibold text-crimson-light/60"
-              title="Points secrets des missions (visibles que par toi, comptés à la fin)"
-            >
-              +{missionBonus}
-            </span>
-          )}
-          <p className="text-gold font-bold text-xl leading-tight">{score}</p>
-        </div>
+        {me?.eliminated ? (
+          <p className="text-crimson font-bold text-base leading-tight uppercase tracking-widest">Mort 💀</p>
+        ) : (
+          <div className="flex items-baseline gap-1.5 justify-end">
+            {missionBonus > 0 && (
+              <span
+                className="text-[11px] font-semibold text-crimson-light/60"
+                title="Points secrets des missions (visibles que par toi, comptés à la fin)"
+              >
+                +{missionBonus}
+              </span>
+            )}
+            <p className="text-gold font-bold text-xl leading-tight">{score}</p>
+          </div>
+        )}
       </div>
     </div>
   )

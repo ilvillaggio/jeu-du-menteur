@@ -71,22 +71,29 @@ export default function IntermissionPage() {
           {sortedPlayers.map((p, i) => {
             const maxScore = sortedPlayers[0]?.score || 1
             return (
-              <div key={p.id}>
+              <div key={p.id} className={p.eliminated ? 'opacity-60' : ''}>
                 <div className="flex justify-between text-sm mb-1">
                   <div className="flex items-center gap-2">
                     <span className="text-muted w-5">#{i + 1}</span>
-                    <Avatar src={p.avatar} className="w-6 h-6 text-xl" />
+                    <Avatar src={p.avatar} className="w-6 h-6 text-xl" animated={!p.eliminated} />
                     <span className={p.id === playerId ? 'font-bold text-gold-light' : 'text-white'}>
                       {p.name}
+                      {p.eliminated && <span className="ml-1.5 text-crimson">💀</span>}
                     </span>
                   </div>
-                  <span className="font-bold text-white">{p.score}</span>
+                  {p.eliminated ? (
+                    <span className="font-bold text-crimson uppercase tracking-widest text-xs">Mort</span>
+                  ) : (
+                    <span className="font-bold text-white">{p.score}</span>
+                  )}
                 </div>
                 <div className="h-1.5 bg-surface rounded-full overflow-hidden">
                   <motion.div
-                    className={`h-full rounded-full ${p.id === playerId ? 'bg-gold' : 'bg-border'}`}
+                    className={`h-full rounded-full ${
+                      p.eliminated ? 'bg-crimson/40' : p.id === playerId ? 'bg-gold' : 'bg-border'
+                    }`}
                     initial={{ width: 0 }}
-                    animate={{ width: `${(p.score / maxScore) * 100}%` }}
+                    animate={{ width: `${p.eliminated ? 0 : (p.score / maxScore) * 100}%` }}
                     transition={{ delay: i * 0.05, duration: 0.6 }}
                   />
                 </div>

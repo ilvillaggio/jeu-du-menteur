@@ -54,18 +54,27 @@ export default function ResultsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07, duration: 0.2 }}
                 className={`flex items-center gap-3 py-3 px-3 rounded-xl min-h-[52px] ${
-                  p.id === playerId ? 'bg-gold/10 border border-gold/30' : 'bg-surface'
+                  p.eliminated
+                    ? 'bg-crimson/5 border border-crimson/20 opacity-70'
+                    : p.id === playerId ? 'bg-gold/10 border border-gold/30' : 'bg-surface'
                 }`}
               >
                 <span className="text-muted text-sm font-mono w-6 text-center shrink-0">#{i + 1}</span>
-                <Avatar src={p.avatar} className="w-8 h-8 text-2xl" />
-                <span className="font-semibold flex-1 truncate">{p.name}</span>
-                {delta !== 0 && (
+                <Avatar src={p.avatar} className="w-8 h-8 text-2xl" animated={!p.eliminated} />
+                <span className="font-semibold flex-1 truncate">
+                  {p.name}
+                  {p.eliminated && <span className="ml-1.5 text-crimson">💀</span>}
+                </span>
+                {!p.eliminated && delta !== 0 && (
                   <span className={`text-sm font-semibold shrink-0 ${delta > 0 ? 'text-teal-light' : 'text-crimson-light'}`}>
                     {delta > 0 ? '+' : ''}{delta}
                   </span>
                 )}
-                <span className="font-bold text-gold-light text-base shrink-0 w-16 text-right">{p.score} pts</span>
+                {p.eliminated ? (
+                  <span className="font-bold text-crimson uppercase tracking-widest text-xs shrink-0 w-16 text-right">Mort</span>
+                ) : (
+                  <span className="font-bold text-gold-light text-base shrink-0 w-16 text-right">{p.score} pts</span>
+                )}
               </motion.div>
             )
           })}

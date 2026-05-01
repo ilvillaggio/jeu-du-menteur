@@ -26,6 +26,7 @@ export default function LobbyPage() {
   const [mode, setMode] = useState(presetRoom ? 'join' : 'create')
   const [error, setError] = useState('')
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  const isDev = import.meta.env.DEV
 
   // Si l'URL contient un code, on bascule en mode "rejoindre" et on nettoie l'URL
   useEffect(() => {
@@ -199,7 +200,7 @@ export default function LobbyPage() {
             {mode === 'create' ? 'Créer la partie' : 'Rejoindre'}
           </button>
 
-          {mode === 'create' && (
+          {mode === 'create' && isDev && (
             <button
               onClick={handleCreateTest}
               className="w-full py-2 text-sm text-muted hover:text-subtle border border-border rounded-lg transition-all"
@@ -217,7 +218,7 @@ export default function LobbyPage() {
             </button>
           )}
 
-          {mode === 'create' && (
+          {mode === 'create' && isDev && (
             <button
               onClick={handlePreviewFinale}
               className="w-full py-2 text-sm text-gold-light/80 hover:text-gold border border-gold/30 rounded-lg transition-all"

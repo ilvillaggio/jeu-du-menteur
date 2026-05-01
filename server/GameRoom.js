@@ -966,8 +966,10 @@ class GameRoom {
   }
 
   // Quand un joueur se déconnecte en plein milieu d'une phase d'attente, on
-  // auto-valide ses actions pour ne pas bloquer les autres. La partie continue
-  // sans lui (il peut toujours se reconnecter via son token).
+  // auto-valide UNIQUEMENT les phases de "passage à l'écran suivant" (ack).
+  // Les phases de choix de jeu (team_selection, choice) attendent indéfiniment
+  // : on ne veut JAMAIS auto-décider à la place du joueur — il prendra son
+  // temps, ou il devra se reconnecter pour valider ses choix.
   autoAckOffline(p) {
     if (!p) return
     switch (this.phase) {
@@ -975,15 +977,6 @@ class GameRoom {
         p.missionAcknowledged = true
         if (this.players.every((x) => x.missionAcknowledged)) {
           setTimeout(() => this._startRound(), 600)
-        }
-        break
-      case 'team_selection':
-        if (!p.teamSubmitted) {
-          p.teamSubmitted = true
-          this.teamChoices.set(p.id, [])
-          if (this.teamChoices.size >= this.players.length) {
-            setTimeout(() => this._resolveTeams(), 500)
-          }
         }
         break
       case 'team_reveal':
@@ -994,20 +987,6 @@ class GameRoom {
           }
         }
         break
-      case 'choice':
-      case 'voting': {
-        const validPartners = this.validTeams.get(p.id) || []
-        if (validPartners.length > 0 && !p.voted) {
-          // Vote par défaut = coopérer (le moins agressif)
-          p.voted = true
-          this.choices.set(p.id, { action: 'cooperer', mise: 0 })
-          const activeCount = [...this.validTeams.values()].filter((v) => v.length > 0).length
-          if (this.choices.size >= activeCount) {
-            setTimeout(() => this._resolveRound(), 1000)
-          }
-        }
-        break
-      }
       case 'results':
         p.resultsAcknowledged = true
         if (this.players.every((x) => x.resultsAcknowledged)) {
@@ -1023,6 +1002,7 @@ class GameRoom {
           setTimeout(() => this._startRound(), 400)
         }
         break
+      // team_selection / choice / voting : pas d'auto, on attend le retour
     }
   }
 

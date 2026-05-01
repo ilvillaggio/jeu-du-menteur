@@ -107,6 +107,13 @@ io.on('connection', (socket) => {
       fullState.scores = room.publicPlayers().map((p) => ({ id: p.id, name: p.name, score: p.score }))
     }
 
+    // Notifie les autres joueurs que celui-ci est de retour online
+    // (sinon ils continuent à voir son avatar grisé)
+    io.to(code).emit('game:state', {
+      players: room.publicPlayers(),
+      totalPlayers: room.playerCount,
+    })
+
     cb({ ok: true, roomCode: code, state: fullState })
   })
 

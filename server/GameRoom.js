@@ -945,10 +945,22 @@ class GameRoom {
 
   _assignMissions() {
     // Each player gets exactly 1 easy + 1 hard mission.
-    // Exclut les missions impossibles selon le nombre de manches choisi
-    // (ex. "trahir 3 manches différentes" sur une partie de 2 manches).
+    //
+    // CRITIQUE : on CLONE chaque mission ({ ...m, completed: false }) au lieu
+    // d'utiliser les références. Sans ça, modifier m.completed = true dans
+    // _checkMissions polluerait l'array MISSIONS global (qui reste chargé en
+    // mémoire pour toute la durée de vie du serveur). Conséquence du bug
+    // précédent : à la 2e partie, les missions étaient déjà completed=true
+    // → validées avant même la manche 1.
+    //
+    // Nettoie aussi l'état au cas où une partie précédente aurait laissé des
+    // résidus sur les objets globaux.
+    MISSIONS.forEach((m) => { delete m.completed })
+
     const N = this.totalRounds
+    const P = this.players.length
     const impossible = new Set()
+    // Filtres selon le nombre de MANCHES
     if (N < 2) { impossible.add('e1'); impossible.add('e6') }     // besoin de 2+ manches
     if (N < 3) {
       impossible.add('h8')  // profite 3 manches
@@ -956,12 +968,23 @@ class GameRoom {
       impossible.add('h14') // coop 3 d'affilée
       impossible.add('h15') // pacte à 3 dans 3 manches
     }
+    // Filtres selon le nombre de JOUEURS (pacte à 3 impossible avec < 3)
+    if (P < 3) {
+      impossible.add('e10') // pacte à 3
+      impossible.add('e11') // pacte à 2 alors qu'un autre voulait à 3
+      impossible.add('h12') // seul traître réussi dans pacte à 3
+      impossible.add('h15') // pacte à 3 dans 3 manches
+    }
+
     const easy = MISSIONS.filter((m) => m.difficulty === 'easy' && !impossible.has(m.id))
                           .sort(() => Math.random() - 0.5)
     const hard = MISSIONS.filter((m) => m.difficulty === 'hard' && !impossible.has(m.id))
                           .sort(() => Math.random() - 0.5)
     this.players.forEach((p, i) => {
-      p.missions = [easy[i % easy.length], hard[i % hard.length]]
+      p.missions = [
+        { ...easy[i % easy.length], completed: false },
+        { ...hard[i % hard.length], completed: false },
+      ]
     })
   }
 

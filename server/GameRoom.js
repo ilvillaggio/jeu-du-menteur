@@ -1081,7 +1081,7 @@ class GameRoom {
   }
 
   // Auto-action différée pour un joueur DÉCONNECTÉ pendant team_selection
-  // ou choice. Lance un timer 15s : si le joueur n'est pas revenu à temps,
+  // ou choice. Lance un timer 5s : si le joueur n'est pas revenu à temps,
   // on soumet un choix par défaut pour ne pas bloquer les autres.
   //   - team_selection : équipe vide → il passe le tour (inactif)
   //   - choice : coopérer (le moins agressif)
@@ -1094,7 +1094,7 @@ class GameRoom {
       p.autoActionTimer = null
       if (p.online) return // revenu entre temps, le timer aurait dû être clearé
       this._applyAutoActionOffline(p)
-    }, 15000)
+    }, 5000)
   }
 
   _applyAutoActionOffline(p) {

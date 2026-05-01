@@ -154,8 +154,30 @@ class GameRoom {
   // ─── Game flow ───
 
   startGame() {
-    this._assignMissions()
+    // Reset complet du state au cas où la salle aurait été réutilisée
+    // (en pratique on crée une nouvelle salle par partie, mais sécurité).
     this.round = 0
+    this.choices.clear()
+    this.choicePreviews?.clear()
+    this.teamChoices.clear()
+    this.validTeams.clear()
+    this.playerHistory.clear()
+    this.firstVoterThisRound = null
+    this._resolvingRound = false
+    this.lastRoundResults = null
+    this.players.forEach((p) => {
+      p.score = 0
+      p.missionScore = 0
+      p.eliminated = false
+      p.hasEverBetrayed = false
+      p.voted = false
+      p.teamSubmitted = false
+      p.missionAcknowledged = false
+      p.teamRevealAcknowledged = false
+      p.resultsAcknowledged = false
+      p.intermissionAcknowledged = false
+    })
+    this._assignMissions()
     this._startMissionReveal()
   }
 
@@ -761,10 +783,16 @@ class GameRoom {
             if (trahisons >= 3) m.completed = true
             break
           }
-          case 'h12': { // Sois seul traître réussi dans un pacte à 3
+          case 'h12': { // Trahis seul dans un pacte à 3 (les 2 autres ont coopéré)
             if (lastEntry.action === 'trahir' && lastEntry.delta > 0 &&
                 lastEntry.partners && lastEntry.partners.length === 2) {
-              m.completed = true
+              // Les 2 partenaires doivent avoir VRAIMENT coopéré
+              // (pas profité, sinon ce n'est pas le scénario de la mission)
+              const allCooped = lastEntry.partners.every((pid) => {
+                const c = this.choices.get(pid)
+                return c && c.action === 'cooperer'
+              })
+              if (allCooped) m.completed = true
             }
             break
           }

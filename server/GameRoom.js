@@ -427,6 +427,7 @@ class GameRoom {
   // Phase 3 → collecte les actions (uniquement actifs)
   registerChoice(playerId, choice) {
     if (this.phase !== 'choice') return
+    if (this.choices.has(playerId)) return // déjà voté, pas de re-soumission
     const validPartners = this.validTeams.get(playerId) || []
     if (validPartners.length === 0) return // hors-jeu ce tour
 
@@ -483,6 +484,11 @@ class GameRoom {
 
   // Résolution du round
   _resolveRound() {
+    // Anti double-appel : si on a déjà résolu ce round (phase passée à
+    // 'results'), on sort. Évite les doublons de hist en cas de race
+    // condition (ex : 2 setTimeout qui tirent en même temps).
+    if (this.phase === 'results' || this._resolvingRound) return
+    this._resolvingRound = true
     const reveals = []
 
     this.players.forEach((p) => {
@@ -605,6 +611,7 @@ class GameRoom {
 
     // Les bots acceptent automatiquement — on attend le clic humain pour continuer
     this._triggerBots()
+    this._resolvingRound = false
   }
 
   acknowledgeResults(id) {

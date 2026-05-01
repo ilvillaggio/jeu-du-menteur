@@ -7,19 +7,31 @@ import Avatar from './Avatar'
 function outcomeVisual(delta, action) {
   if (delta === null || delta === undefined) return null // inactive
   if (delta > 0) {
-    if (action === 'trahir')  return { emoji: '😈', caption: 'Trahison réussie !', sub: 'Tu repars avec le butin…',    chest: '🏆', anim: 'evil-lean' }
-    if (action === 'profiter') return { emoji: '😏', caption: 'Tu as profité !',    sub: 'Les poches bien remplies…',   chest: '💰', anim: 'profit-wink' }
-    return                           { emoji: '😄', caption: 'Coopération réussie !', sub: 'Tout le monde y gagne !', chest: '🤝', anim: 'happy-bounce' }
+    if (action === 'trahir')   return { emoji: '😈', caption: 'Trahison réussie !', sub: 'Tu repars avec le butin…',  chest: '🏆', anim: 'evil-victory' }
+    if (action === 'profiter') return { emoji: '😏', caption: 'Tu as profité !',    sub: 'Les poches bien remplies…', chest: '💰', anim: 'profit-wink' }
+    return                            { emoji: '😄', caption: 'Coopération réussie !', sub: 'Tout le monde y gagne !', chest: '🤝', anim: 'happy-bounce' }
   }
-  return { emoji: '🤕', caption: 'Aïe !', sub: 'Tu repars avec des bleus…', chest: '😤', anim: 'hurt-shake' }
+  // delta <= 0 : différencier le scénario selon l'action choisie
+  if (action === 'trahir')   return { emoji: '🤕', caption: 'Trahison contrée !',    sub: 'Vous étiez plusieurs à trahir…', chest: '😤', anim: 'hurt-shake' }
+  if (action === 'cooperer') return { emoji: '🥀', caption: 'Coopération trompée !', sub: 'Quelqu\'un t\'a doublé…',         chest: '😢', anim: 'hurt-shake' }
+  return                            { emoji: '🤕', caption: 'Aïe !',                  sub: 'Tu repars avec des bleus…',       chest: '😤', anim: 'hurt-shake' }
 }
 
 // Chaque outcome a sa gestuelle propre — en boucle avec pause pour rester visible
 const OUTCOME_ANIMS = {
-  // Lean maléfique : se penche encore et encore
-  'evil-lean': {
-    animate: { rotate: [0, -18, -12, -18, -14], scale: [1, 1.06, 1.03, 1.06, 1.04] },
-    transition: { duration: 1.4, ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.3 },
+  // Trahison réussie : saut victorieux + rotation maléfique + scale prononcée
+  // — clairement triomphant, plus de confusion avec un perso qui titube.
+  'evil-victory': {
+    animate: {
+      y: [0, -36, -8, -28, -4, 0],
+      rotate: [0, -15, 18, -10, 14, 0],
+      scale: [1, 1.22, 1.1, 1.2, 1.08, 1.05],
+    },
+    transition: {
+      duration: 1.5, ease: 'easeOut',
+      times: [0, 0.18, 0.42, 0.6, 0.82, 1],
+      repeat: Infinity, repeatDelay: 0.5,
+    },
   },
   // Profit : rotation malicieuse + pulse, loop
   'profit-wink': {

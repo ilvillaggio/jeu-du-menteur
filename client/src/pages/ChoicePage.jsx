@@ -51,7 +51,10 @@ export default function ChoicePage() {
   const isFinalRound = round === (totalRounds || 5)
 
   const [action, setAction] = useState(null)
-  const [submitted, setSubmitted] = useState(false)
+  const [localSubmitted, setLocalSubmitted] = useState(false)
+  // Reconnect : si le serveur sait que j'ai déjà voté, on respecte cet état
+  const me = players.find((p) => p.id === playerId)
+  const submitted = localSubmitted || !!me?.voted
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [whispersOpen, setWhispersOpen] = useState(false)
   const [scoreboardOpen, setScoreboardOpen] = useState(false)
@@ -71,7 +74,7 @@ export default function ChoicePage() {
   function submit() {
     if (!action || !isActive) return
     socket.emit('player:choice', { action, mise: 0 })
-    setSubmitted(true)
+    setLocalSubmitted(true)
   }
 
   const canSubmit = action && !submitted && isActive

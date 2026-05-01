@@ -14,7 +14,10 @@ export default function TeamSelectionPage() {
   const { socket } = useSocket()
 
   const [selected, setSelected] = useState([])
-  const [submitted, setSubmitted] = useState(false)
+  const [localSubmitted, setLocalSubmitted] = useState(false)
+  // Reconnect : si le serveur sait que je l'ai déjà soumis, on respecte cet état
+  const me = players.find((p) => p.id === playerId)
+  const submitted = localSubmitted || !!me?.teamSubmitted
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [whispersOpen, setWhispersOpen] = useState(false)
   const [scoreboardOpen, setScoreboardOpen] = useState(false)
@@ -31,7 +34,7 @@ export default function TeamSelectionPage() {
 
   function submit() {
     if (selected.length < 1 || selected.length > 2 || submitted) return
-    socket.emit('player:team_choice', selected, () => setSubmitted(true))
+    socket.emit('player:team_choice', selected, () => setLocalSubmitted(true))
   }
 
   return (

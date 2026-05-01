@@ -8,7 +8,10 @@ export default function GameSocketBridge() {
   const { socket } = useSocket()
   const { updateGame, setRoom, setPlayer, addWhisper, addPactMessage, clearPactMessages, phase } = useGame()
 
-  // Auto-reconnect : si on a un roomCode + token en localStorage, on tente de retrouver la partie
+  // Auto-reconnect : si on a un roomCode + token en localStorage, on tente de
+  // retrouver la partie. Pas de timeout brutal qui ramènerait au lobby (un
+  // Vercel serverless en cold start peut prendre 10-15s à répondre). On
+  // attend le retour serveur ; en attendant, le user voit son dernier écran.
   useEffect(() => {
     if (!socket) return
     function tryReconnect() {
@@ -16,26 +19,15 @@ export default function GameSocketBridge() {
       const token = getOrCreateToken()
       if (!session.roomCode) return
 
-      // Timeout de sécurité : si le serveur ne répond pas en 8s (salle expirée,
-      // problème réseau, etc.) on nettoie la session et on retourne au lobby
-      // pour ne pas rester bloqué sur un écran vide.
-      let resolved = false
-      const fallback = setTimeout(() => {
-        if (resolved) return
-        resolved = true
-        clearRoom()
-        updateGame({ phase: 'lobby' })
-      }, 8000)
-
       socket.emit('room:reconnect', { code: session.roomCode, token }, (res) => {
-        if (resolved) return
-        resolved = true
-        clearTimeout(fallback)
         if (res?.error) {
+          // Le serveur dit explicitement que la salle/joueur n'existe plus →
+          // OK pour nettoyer et retourner au lobby. Pas avant.
           clearRoom()
           updateGame({ phase: 'lobby' })
           return
         }
+        if (!res?.state) return // pas de réponse exploitable → on ne touche à rien
         setPlayer(res.state.playerId, session.playerName || 'Joueur')
         setRoom(res.roomCode)
         updateGame(res.state)

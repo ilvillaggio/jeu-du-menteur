@@ -13,7 +13,7 @@ export default function TutorialPage({ onClose }) {
   // Auto-play : avance toutes les 6 secondes (sauf dernier slide ou pause)
   useEffect(() => {
     if (paused || isLast) return
-    const t = setTimeout(() => setIndex((i) => i + 1), 6000)
+    const t = setTimeout(() => setIndex((i) => i + 1), 9000)
     return () => clearTimeout(t)
   }, [index, paused, isLast])
 
@@ -41,7 +41,7 @@ export default function TutorialPage({ onClose }) {
                 width: i < index ? '100%' : i === index ? (paused ? '50%' : '100%') : '0%',
               }}
               transition={{
-                duration: i === index && !paused ? 6 : 0.3,
+                duration: i === index && !paused ? 9 : 0.3,
                 ease: 'linear',
               }}
             />

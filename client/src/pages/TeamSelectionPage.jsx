@@ -116,26 +116,36 @@ export default function TeamSelectionPage() {
             </p>
 
             <div className="flex flex-col gap-2">
-              {others.map((p, i) => (
-                <motion.button
-                  key={p.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => toggle(p.id)}
-                  className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors min-h-[68px] ${
-                    selected.includes(p.id)
-                      ? 'border-gold bg-gold/10 text-white'
-                      : 'border-border bg-surface text-muted'
-                  }`}
-                >
-                  <Avatar src={p.avatar} className="w-12 h-12 text-3xl" />
-                  <span className="font-bold text-base flex-1 text-left">{p.name}</span>
-                  {selected.includes(p.id) && (
-                    <span className="text-gold text-xl">✓</span>
-                  )}
-                </motion.button>
-              ))}
+              {others.map((p, i) => {
+                const isOffline = p.online === false
+                return (
+                  <motion.button
+                    key={p.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => toggle(p.id)}
+                    className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors min-h-[68px] ${
+                      selected.includes(p.id)
+                        ? 'border-gold bg-gold/10 text-white'
+                        : isOffline
+                          ? 'border-crimson/30 bg-crimson/5 text-muted'
+                          : 'border-border bg-surface text-muted'
+                    }`}
+                  >
+                    <Avatar src={p.avatar} className={`w-12 h-12 text-3xl ${isOffline ? 'opacity-40' : ''}`} animated={!isOffline} />
+                    <div className="flex-1 text-left">
+                      <p className="font-bold text-base">{p.name}</p>
+                      {isOffline && (
+                        <p className="text-[10px] text-crimson-light/80 mt-0.5">📡 hors ligne · risqué</p>
+                      )}
+                    </div>
+                    {selected.includes(p.id) && (
+                      <span className="text-gold text-xl">✓</span>
+                    )}
+                  </motion.button>
+                )
+              })}
             </div>
           </div>
 

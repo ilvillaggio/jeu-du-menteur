@@ -163,12 +163,20 @@ export default function ChoicePage() {
               <section>
                 <p className="text-xs text-muted uppercase tracking-widest mb-2">Ton équipe</p>
                 <div className="flex gap-2 items-center flex-wrap">
-                  {validPartnerPlayers.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-teal/10 border border-teal/30 rounded-xl">
-                      <Avatar src={p.avatar} className="w-8 h-8 text-2xl" />
-                      <span className="text-sm font-semibold text-teal-light">{p.name}</span>
-                    </div>
-                  ))}
+                  {validPartnerPlayers.map((p) => {
+                    const isOffline = p.online === false
+                    return (
+                      <div key={p.id} className={`flex items-center gap-2 px-3 py-2 border rounded-xl ${
+                        isOffline ? 'bg-crimson/10 border-crimson/30 opacity-60' : 'bg-teal/10 border-teal/30'
+                      }`}>
+                        <Avatar src={p.avatar} className="w-8 h-8 text-2xl" animated={!isOffline} />
+                        <span className={`text-sm font-semibold ${isOffline ? 'text-crimson-light' : 'text-teal-light'}`}>
+                          {p.name}
+                          {isOffline && <span className="ml-1 text-xs">📡</span>}
+                        </span>
+                      </div>
+                    )
+                  })}
                   <button
                     onClick={() => setPactOpen(true)}
                     className="relative ml-auto flex items-center gap-2 px-3 py-2 bg-teal/20 hover:bg-teal/30 border-2 border-teal/40 rounded-xl touch-manipulation transition-colors"

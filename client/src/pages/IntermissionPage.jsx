@@ -79,6 +79,7 @@ export default function IntermissionPage() {
                     <span className={p.id === playerId ? 'font-bold text-gold-light' : 'text-white'}>
                       {p.name}
                       {p.eliminated && <span className="ml-1.5 text-crimson">💀</span>}
+                      {!p.eliminated && p.online === false && <span className="ml-1.5 text-crimson-light/70 text-xs">📡</span>}
                     </span>
                   </div>
                   {p.eliminated ? (

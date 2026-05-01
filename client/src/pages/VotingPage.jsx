@@ -39,26 +39,32 @@ export default function VotingPage() {
         {/* Player avatars */}
         <div className="card">
           <div className="flex flex-wrap gap-3 justify-center">
-            {players.map((p) => (
-              <motion.div
-                key={p.id}
-                animate={
-                  p.voted
-                    ? { opacity: 1, scale: 1, x: 0, rotate: 0 }
-                    : { opacity: 0.5, scale: 0.9, x: [0, -1.5, 1.5, -1, 1, 0], rotate: [0, -1, 1, -0.5, 0.5, 0] }
-                }
-                transition={
-                  p.voted
-                    ? { duration: 0.2 }
-                    : { duration: 0.4, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' }
-                }
-                className="flex flex-col items-center gap-1 w-14"
-              >
-                <Avatar src={p.avatar} animated={p.voted} className="w-12 h-12 text-3xl" />
-                <span className="text-xs text-muted truncate w-full text-center">{p.name}</span>
-                <span className={`text-xs font-bold ${p.voted ? 'text-teal-light' : 'text-transparent'}`}>✓</span>
-              </motion.div>
-            ))}
+            {players.map((p) => {
+              const isOffline = p.online === false
+              return (
+                <motion.div
+                  key={p.id}
+                  animate={
+                    p.voted
+                      ? { opacity: isOffline ? 0.6 : 1, scale: 1, x: 0, rotate: 0 }
+                      : { opacity: isOffline ? 0.3 : 0.5, scale: 0.9, x: [0, -1.5, 1.5, -1, 1, 0], rotate: [0, -1, 1, -0.5, 0.5, 0] }
+                  }
+                  transition={
+                    p.voted
+                      ? { duration: 0.2 }
+                      : { duration: 0.4, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' }
+                  }
+                  className="flex flex-col items-center gap-1 w-14 relative"
+                >
+                  <Avatar src={p.avatar} animated={p.voted && !isOffline} className="w-12 h-12 text-3xl" />
+                  {isOffline && (
+                    <span className="absolute -top-1 -right-1 text-sm bg-crimson rounded-full w-5 h-5 flex items-center justify-center" title="Hors ligne">📡</span>
+                  )}
+                  <span className="text-xs text-muted truncate w-full text-center">{p.name}</span>
+                  <span className={`text-xs font-bold ${p.voted ? 'text-teal-light' : 'text-transparent'}`}>✓</span>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
 

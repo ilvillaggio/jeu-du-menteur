@@ -10,7 +10,16 @@ export default function TeamRevealPage() {
   const { socket } = useSocket()
   const [acked, setAcked] = useState(false)
 
-  if (!teamReveal) return null
+  if (!teamReveal) {
+    // Fallback (reconnect avant que le payload soit reçu) — au lieu d'écran noir
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-3">
+        <div className="text-5xl animate-pulse">⏳</div>
+        <p className="text-white font-bold">Chargement de la manche…</p>
+        <p className="text-muted text-sm">Si rien ne se passe, retourne au lobby.</p>
+      </div>
+    )
+  }
   const myAvatar = players.find((p) => p.id === playerId)?.avatar
 
   const { pacts, isActive, trickedPlayers = [] } = teamReveal

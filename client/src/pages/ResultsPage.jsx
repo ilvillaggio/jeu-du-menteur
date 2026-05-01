@@ -17,7 +17,16 @@ export default function ResultsPage() {
     setAcknowledged(false)
   }, [roundResults?.round])
 
-  if (!roundResults) return null
+  if (!roundResults) {
+    // Fallback (reconnect en plein milieu de la phase results) — pas d'écran noir
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-3">
+        <div className="text-5xl animate-pulse">⏳</div>
+        <p className="text-white font-bold">Chargement des résultats…</p>
+        <p className="text-muted text-sm">La manche suivante arrive.</p>
+      </div>
+    )
+  }
 
   // Si le joueur était hors-jeu cette manche (aucun pacte mutuel) ou déjà mort,
   // pas d'animation de bagarre — il n'a "rien fait", donc on saute direct au

@@ -562,6 +562,7 @@ class GameRoom {
 
     const results = { reveals, round: this.round }
     this.phase = 'results'
+    this.lastRoundResults = results // pour reconstruire en cas de reconnect
     // Joueurs éliminés : auto-ack pour ne pas bloquer le passage à l'intermission
     this.players.forEach((p) => { p.resultsAcknowledged = !!p.eliminated })
 
@@ -936,6 +937,22 @@ class GameRoom {
     this.players.forEach((p, i) => {
       p.missions = [easy[i % easy.length], hard[i % hard.length]]
     })
+  }
+
+  // Reconstruit le payload team_reveal pour un joueur donné (utile au reconnect
+  // pendant la phase team_reveal). Les données viennent de validTeams et
+  // teamChoices qui sont stockées dans le state du round courant.
+  buildTeamRevealFor(player) {
+    const chosen = this.teamChoices.get(player.id) || []
+    const mutual = this.validTeams.get(player.id) || []
+    const pacts = chosen.map((pid) => {
+      const partner = this.players.find((x) => x.id === pid)
+      return { id: pid, name: partner?.name || '?', avatar: partner?.avatar || '🎭', valid: mutual.includes(pid) }
+    })
+    const trickedPlayers = this.players
+      .filter((p) => (this.validTeams.get(p.id) || []).length === 0)
+      .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar }))
+    return { pacts, isActive: mutual.length > 0, round: this.round, trickedPlayers }
   }
 
   // ─── State helpers ───

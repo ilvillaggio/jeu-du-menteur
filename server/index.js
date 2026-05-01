@@ -88,6 +88,25 @@ io.on('connection', (socket) => {
       myHistory: room._historyForPlayer(res.player),
       playerId: socket.id,
     }
+
+    // Phases qui nécessitent des données spécifiques pour ne pas afficher
+    // un écran vide au reconnect.
+    if (room.phase === 'team_reveal') {
+      fullState.teamReveal = room.buildTeamRevealFor(res.player)
+      fullState.myValidPartners = room.validTeams.get(res.player.id) || []
+      fullState.isActive = (room.validTeams.get(res.player.id) || []).length > 0
+    }
+    if (room.phase === 'choice' || room.phase === 'voting') {
+      fullState.myValidPartners = room.validTeams.get(res.player.id) || []
+      fullState.isActive = (room.validTeams.get(res.player.id) || []).length > 0
+    }
+    if (room.phase === 'results' || room.phase === 'intermission') {
+      fullState.roundResults = room.lastRoundResults || null
+    }
+    if (room.phase === 'intermission') {
+      fullState.scores = room.publicPlayers().map((p) => ({ id: p.id, name: p.name, score: p.score }))
+    }
+
     cb({ ok: true, roomCode: code, state: fullState })
   })
 

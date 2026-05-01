@@ -15,14 +15,27 @@ export default function GameSocketBridge() {
       const session = getSession()
       const token = getOrCreateToken()
       if (!session.roomCode) return
+
+      // Timeout de sécurité : si le serveur ne répond pas en 8s (salle expirée,
+      // problème réseau, etc.) on nettoie la session et on retourne au lobby
+      // pour ne pas rester bloqué sur un écran vide.
+      let resolved = false
+      const fallback = setTimeout(() => {
+        if (resolved) return
+        resolved = true
+        clearRoom()
+        updateGame({ phase: 'lobby' })
+      }, 8000)
+
       socket.emit('room:reconnect', { code: session.roomCode, token }, (res) => {
+        if (resolved) return
+        resolved = true
+        clearTimeout(fallback)
         if (res?.error) {
-          // Salle ou joueur introuvable → on nettoie et on retourne au lobby
           clearRoom()
           updateGame({ phase: 'lobby' })
           return
         }
-        // Reconnexion réussie : restaurer le state + identité
         setPlayer(res.state.playerId, session.playerName || 'Joueur')
         setRoom(res.roomCode)
         updateGame(res.state)

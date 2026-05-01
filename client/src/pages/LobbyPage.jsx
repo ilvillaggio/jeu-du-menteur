@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useSocket } from '../context/SocketContext'
 import { useGame } from '../context/GameContext'
 import { getOrCreateToken, saveSession } from '../lib/session'
+import TutorialPage from './TutorialPage'
 
 // Lit le code de salle depuis l'URL si présent (?room=ABCD).
 function getRoomFromUrl() {
@@ -24,6 +25,7 @@ export default function LobbyPage() {
   const [roundsCount, setRoundsCount] = useState(5)
   const [mode, setMode] = useState(presetRoom ? 'join' : 'create')
   const [error, setError] = useState('')
+  const [tutorialOpen, setTutorialOpen] = useState(false)
 
   // Si l'URL contient un code, on bascule en mode "rejoindre" et on nettoie l'URL
   useEffect(() => {
@@ -208,6 +210,15 @@ export default function LobbyPage() {
 
           {mode === 'create' && (
             <button
+              onClick={() => setTutorialOpen(true)}
+              className="w-full py-2 text-sm text-teal-light/80 hover:text-teal-light border border-teal/30 rounded-lg transition-all"
+            >
+              📖 Comment jouer ?
+            </button>
+          )}
+
+          {mode === 'create' && (
+            <button
               onClick={handlePreviewFinale}
               className="w-full py-2 text-sm text-gold-light/80 hover:text-gold border border-gold/30 rounded-lg transition-all"
             >
@@ -216,6 +227,8 @@ export default function LobbyPage() {
           )}
         </div>
       </motion.div>
+
+      {tutorialOpen && <TutorialPage onClose={() => setTutorialOpen(false)} />}
     </div>
   )
 }

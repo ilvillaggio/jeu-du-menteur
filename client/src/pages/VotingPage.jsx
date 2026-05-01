@@ -56,10 +56,15 @@ export default function VotingPage() {
                   }
                   className="flex flex-col items-center gap-1 w-14 relative"
                 >
-                  <Avatar src={p.avatar} animated={p.voted && !isOffline} className="w-12 h-12 text-3xl" />
-                  {isOffline && (
-                    <span className="absolute -top-1 -right-1 text-sm bg-crimson rounded-full w-5 h-5 flex items-center justify-center" title="Hors ligne">📡</span>
-                  )}
+                  <div className="relative">
+                    <Avatar src={p.avatar} animated={p.voted && !isOffline} className="w-12 h-12 text-3xl" />
+                    {isOffline && (
+                      <span
+                        className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-crimson rounded-full border-2 border-card"
+                        title="Hors ligne"
+                      />
+                    )}
+                  </div>
                   <span className="text-xs text-muted truncate w-full text-center">{p.name}</span>
                   <span className={`text-xs font-bold ${p.voted ? 'text-teal-light' : 'text-transparent'}`}>✓</span>
                 </motion.div>

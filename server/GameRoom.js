@@ -253,6 +253,14 @@ class GameRoom {
       this.io.to(p.id).emit('game:state', this._stateFor(p))
     })
 
+    // Re-arme l'auto-action 15s pour les joueurs toujours offline → la partie
+    // continuera sans eux à chaque nouvelle manche (15s par manche, pas 30+15)
+    this.players.forEach((p) => {
+      if (!p.isBot && !p.eliminated && !p.online) {
+        this.scheduleAutoActionOffline(p)
+      }
+    })
+
     this._triggerBots()
   }
 
@@ -442,6 +450,15 @@ class GameRoom {
         myValidPartners: validPartners,
         isActive: validPartners.length > 0,
       })
+    })
+
+    // Re-arme l'auto-action 15s pour les joueurs offline qui ont un pacte
+    // (les hors-pacte n'ont rien à voter, on ne touche pas à eux)
+    this.players.forEach((p) => {
+      const validPartners = this.validTeams.get(p.id) || []
+      if (!p.isBot && !p.eliminated && !p.online && validPartners.length > 0) {
+        this.scheduleAutoActionOffline(p)
+      }
     })
 
     this._triggerBots()

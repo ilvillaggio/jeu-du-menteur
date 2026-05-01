@@ -106,12 +106,13 @@ const SLIDES = [
     render: () => (
       <>
         <motion.div
-          animate={{ y: [0, -10, 0], rotate: [-3, 3, -3] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          animate={{ y: [0, -8, 0], rotate: [-4, 4, -3], scale: [1, 1.06, 1] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           className="text-8xl mb-6"
-        >🐺</motion.div>
+          style={{ filter: 'drop-shadow(0 0 24px rgba(180,30,30,0.6))' }}
+        >🎭</motion.div>
         <h1 className="text-4xl font-bold text-white mb-2">Le Jeu du Menteur</h1>
-        <p className="text-gold-light text-lg italic">Trahis. Coopère. Survis.</p>
+        <p className="text-crimson-light/80 text-lg italic">Trahis. Coopère. Survis.</p>
         <p className="text-muted text-sm mt-6">Découvre les règles en 30 secondes</p>
       </>
     ),

@@ -96,9 +96,14 @@ export default function LobbyPage() {
       >
         {/* Title */}
         <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold text-gold mb-2 tracking-tight">🐺</h1>
-          <h1 className="text-4xl font-bold text-white mb-1">Le Jeu du Menteur</h1>
-          <p className="text-muted text-sm">Trahis. Coopère. Survive.</p>
+          <motion.div
+            animate={{ rotate: [0, -4, 4, -3, 0], scale: [1, 1.04, 1, 1.03, 1] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            className="text-6xl mb-3"
+            style={{ filter: 'drop-shadow(0 0 20px rgba(180,30,30,0.5))' }}
+          >🎭</motion.div>
+          <h1 className="text-4xl font-bold text-white mb-1 tracking-tight">Le Jeu du Menteur</h1>
+          <p className="text-crimson-light/80 text-sm italic tracking-wide">Trahis. Coopère. Survis.</p>
         </div>
 
         {/* Mode tabs */}

@@ -84,12 +84,32 @@ class GameRoom {
       this._cleanupTimer = null
     }
 
-    // Mettre à jour les Maps qui indexent par playerId
-    if (this.choices.has(oldId))      { this.choices.set(socket.id, this.choices.get(oldId));         this.choices.delete(oldId) }
-    if (this.teamChoices.has(oldId))  { this.teamChoices.set(socket.id, this.teamChoices.get(oldId)); this.teamChoices.delete(oldId) }
-    if (this.validTeams.has(oldId))   { this.validTeams.set(socket.id, this.validTeams.get(oldId));   this.validTeams.delete(oldId) }
-    if (this.playerHistory.has(oldId)){ this.playerHistory.set(socket.id, this.playerHistory.get(oldId)); this.playerHistory.delete(oldId) }
+    // 1) Mettre à jour les KEYS des Maps indexées par playerId
+    if (this.choices.has(oldId))        { this.choices.set(socket.id, this.choices.get(oldId));         this.choices.delete(oldId) }
+    if (this.teamChoices.has(oldId))    { this.teamChoices.set(socket.id, this.teamChoices.get(oldId)); this.teamChoices.delete(oldId) }
+    if (this.validTeams.has(oldId))     { this.validTeams.set(socket.id, this.validTeams.get(oldId));   this.validTeams.delete(oldId) }
+    if (this.playerHistory.has(oldId))  { this.playerHistory.set(socket.id, this.playerHistory.get(oldId)); this.playerHistory.delete(oldId) }
+    if (this.choicePreviews?.has(oldId)){ this.choicePreviews.set(socket.id, this.choicePreviews.get(oldId)); this.choicePreviews.delete(oldId) }
     if (this.firstVoterThisRound === oldId) this.firstVoterThisRound = socket.id
+
+    // 2) CRUCIAL : mettre à jour les VALEURS qui référencent oldId. Sans ça,
+    //    si un autre joueur a choisi oldId comme partenaire avant le reconnect,
+    //    sa référence pointe vers un ID qui n'existe plus → le pacte mutuel
+    //    ne se forme pas même si les 2 joueurs se sont choisis.
+    const remap = (arr) => (arr || []).map((x) => (x === oldId ? socket.id : x))
+    for (const [pid, picks] of this.teamChoices.entries()) {
+      this.teamChoices.set(pid, remap(picks))
+    }
+    for (const [pid, partners] of this.validTeams.entries()) {
+      this.validTeams.set(pid, remap(partners))
+    }
+    for (const [pid, hist] of this.playerHistory.entries()) {
+      this.playerHistory.set(pid, hist.map((h) => ({
+        ...h,
+        partners:  remap(h.partners),
+        chosenIds: remap(h.chosenIds),
+      })))
+    }
 
     return { ok: true, player: p }
   }

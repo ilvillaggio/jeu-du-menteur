@@ -49,7 +49,7 @@ export default function MissionRevealPage() {
             <p className={`text-xs uppercase tracking-widest mb-2 font-bold ${
               m.difficulty === 'hard' ? 'text-crimson-light' : 'text-gold'
             }`}>
-              {m.difficulty === 'hard' ? '⚡ Difficile · +35 pts cachés' : '✦ Facile · +15 pts cachés'}
+              {m.difficulty === 'hard' ? '⚡ Difficile · +75 pts cachés' : '✦ Facile · +25 pts cachés'}
             </p>
             <p className="text-white font-semibold text-base leading-snug">{m.description}</p>
           </motion.div>

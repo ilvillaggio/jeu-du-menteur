@@ -650,9 +650,13 @@ class GameRoom {
             if (hist.length >= 2) {
               const prev = hist[hist.length - 2]
               const cur  = hist[hist.length - 1]
-              const sameTeam = cur.partners.length === prev.partners.length &&
-                cur.partners.every((pid) => prev.partners.includes(pid))
-              if (sameTeam) m.completed = true
+              // Il faut au moins un partenaire dans chaque manche (sinon
+              // 2 manches d'inactivité = "même équipe vide" = faux positif)
+              if (cur.partners.length > 0 && prev.partners.length > 0) {
+                const sameTeam = cur.partners.length === prev.partners.length &&
+                  cur.partners.every((pid) => prev.partners.includes(pid))
+                if (sameTeam) m.completed = true
+              }
             }
             break
           }

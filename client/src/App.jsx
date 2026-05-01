@@ -25,13 +25,13 @@ function PhaseRouter() {
   const { phase, players, playerId } = useGame()
 
   // Joueurs éliminés : on bascule sur EliminatedPage pour toutes les phases
-  // de partie. EliminatedPage adapte son contenu (classement / pactes-actions /
-  // résultats) selon la phase. Les phases hors-partie (lobby, waiting, final)
-  // restent normales.
+  // de partie SAUF 'results' — on laisse le joueur voir sa propre animation
+  // de bataille et son delta (notamment quand il vient juste de mourir).
+  // À l'intermission qui suit, il bascule alors sur l'écran spectateur.
   const me = players?.find((p) => p.id === playerId)
   const isEliminated = !!me?.eliminated
   const inGamePhase = phase !== 'lobby' && phase !== 'waiting' && phase !== 'final'
-  const showElim = isEliminated && inGamePhase
+  const showElim = isEliminated && inGamePhase && phase !== 'results'
 
   const pages = {
     lobby:          <LobbyPage />,

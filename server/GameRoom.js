@@ -83,6 +83,12 @@ class GameRoom {
       clearTimeout(this._cleanupTimer)
       this._cleanupTimer = null
     }
+    // Annule l'auto-action différée (le joueur revient à temps, il reprend
+    // le contrôle de son choix d'équipe / d'action)
+    if (p.autoActionTimer) {
+      clearTimeout(p.autoActionTimer)
+      p.autoActionTimer = null
+    }
 
     // 1) Mettre à jour les KEYS des Maps indexées par playerId
     if (this.choices.has(oldId))        { this.choices.set(socket.id, this.choices.get(oldId));         this.choices.delete(oldId) }
@@ -1057,11 +1063,64 @@ class GameRoom {
     })
   }
 
+  // Auto-action différée pour un joueur DÉCONNECTÉ pendant team_selection
+  // ou choice. Lance un timer 15s : si le joueur n'est pas revenu à temps,
+  // on soumet un choix par défaut pour ne pas bloquer les autres.
+  //   - team_selection : équipe vide → il passe le tour (inactif)
+  //   - choice : coopérer (le moins agressif)
+  // Le timer est annulé si le joueur se reconnecte (cf. reconnectPlayer).
+  scheduleAutoActionOffline(p) {
+    if (!p) return
+    if (p.autoActionTimer) clearTimeout(p.autoActionTimer)
+    if (this.phase !== 'team_selection' && this.phase !== 'choice') return
+    p.autoActionTimer = setTimeout(() => {
+      p.autoActionTimer = null
+      if (p.online) return // revenu entre temps, le timer aurait dû être clearé
+      this._applyAutoActionOffline(p)
+    }, 15000)
+  }
+
+  _applyAutoActionOffline(p) {
+    if (this.phase === 'team_selection' && !p.teamSubmitted) {
+      p.teamSubmitted = true
+      this.teamChoices.set(p.id, []) // équipe vide → passe le tour
+      this._broadcastSpectator()
+      this.io.to(this.code).emit('game:team_votes', {
+        count: this.teamChoices.size,
+        total: this.players.length,
+      })
+      this.io.to(this.code).emit('game:state', {
+        players: this.publicPlayers(),
+        phase: 'team_selection',
+        teamVotesCount: this.teamChoices.size,
+        totalPlayers: this.players.length,
+      })
+      if (this.teamChoices.size >= this.players.length) {
+        setTimeout(() => this._resolveTeams(), 500)
+      }
+    } else if (this.phase === 'choice' && !p.voted) {
+      const validPartners = this.validTeams.get(p.id) || []
+      if (validPartners.length === 0) return // hors-pacte, rien à faire
+      p.voted = true
+      this.choices.set(p.id, { action: 'cooperer', mise: 0 })
+      const activeCount = [...this.validTeams.values()].filter((v) => v.length > 0).length
+      this.io.to(this.code).emit('game:votes', { count: this.choices.size, total: activeCount })
+      this.io.to(this.code).emit('game:state', {
+        players: this.publicPlayers(),
+        votesCount: this.choices.size,
+        totalPlayers: activeCount,
+      })
+      this._broadcastSpectator()
+      if (this.choices.size >= activeCount) {
+        setTimeout(() => this._resolveRound(), 1000)
+      }
+    }
+  }
+
   // Quand un joueur se déconnecte en plein milieu d'une phase d'attente, on
   // auto-valide UNIQUEMENT les phases de "passage à l'écran suivant" (ack).
-  // Les phases de choix de jeu (team_selection, choice) attendent indéfiniment
-  // : on ne veut JAMAIS auto-décider à la place du joueur — il prendra son
-  // temps, ou il devra se reconnecter pour valider ses choix.
+  // Pour team_selection et choice, on schedule via scheduleAutoActionOffline
+  // pour laisser une fenêtre de 15s avant l'auto-action.
   autoAckOffline(p) {
     if (!p) return
     switch (this.phase) {

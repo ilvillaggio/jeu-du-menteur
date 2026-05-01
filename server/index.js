@@ -331,6 +331,9 @@ io.on('connection', (socket) => {
       if (p) {
         p.online = false
         room.autoAckOffline(p)
+        // Pour team_selection / choice : auto-action après 15s s'il n'est
+        // pas revenu (équipe vide ou coopérer par défaut). Annulé au reconnect.
+        room.scheduleAutoActionOffline(p)
         io.to(code).emit('game:state', room.stateForAll())
 
         // Au cas où plus personne d'humain ne soit en ligne, on supprime la salle

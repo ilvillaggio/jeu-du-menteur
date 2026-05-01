@@ -106,6 +106,58 @@ export default function LobbyPage() {
           <p className="text-crimson-light/80 text-sm italic tracking-wide">Trahis. Coopère. Survis.</p>
         </div>
 
+        {/* PREVIEW TEMPORAIRE — comparatif des emblèmes (à supprimer) */}
+        <div className="card mb-6 border-gold/40">
+          <p className="text-xs text-gold-light uppercase tracking-widest mb-3 text-center">
+            Aperçu : choisis l'emblème
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {/* Option A : 🎭 (actuel) */}
+            <div className="text-center p-2 rounded-xl bg-surface border border-border">
+              <motion.div
+                animate={{ rotate: [0, -4, 4, -3, 0], scale: [1, 1.06, 1] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                className="text-5xl mb-2"
+                style={{ filter: 'drop-shadow(0 0 16px rgba(180,30,30,0.5))' }}
+              >🎭</motion.div>
+              <p className="text-[10px] text-muted font-bold uppercase tracking-widest">A · Masque</p>
+              <p className="text-[9px] text-muted mt-0.5">actuel</p>
+            </div>
+            {/* Option B : 👹 oni féroce */}
+            <div className="text-center p-2 rounded-xl bg-surface border border-border">
+              <motion.div
+                animate={{
+                  scale: [1, 1.12, 1.02, 1.1, 1],
+                  rotate: [0, -2, 2, -1, 0],
+                }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                className="text-5xl mb-2"
+                style={{ filter: 'drop-shadow(0 0 18px rgba(220,38,38,0.7))' }}
+              >👹</motion.div>
+              <p className="text-[10px] text-muted font-bold uppercase tracking-widest">B · Oni</p>
+              <p className="text-[9px] text-muted mt-0.5">féroce</p>
+            </div>
+            {/* Option C : 🐺 loup rouge menaçant */}
+            <div className="text-center p-2 rounded-xl bg-surface border border-border">
+              <motion.div
+                animate={{
+                  scale: [1, 1.08, 1, 1.05, 1],
+                }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                className="text-5xl mb-2 relative inline-block"
+                style={{
+                  filter: 'drop-shadow(0 0 8px rgba(220,38,38,0.95)) drop-shadow(0 0 22px rgba(220,38,38,0.6))',
+                }}
+              >🐺</motion.div>
+              <p className="text-[10px] text-muted font-bold uppercase tracking-widest">C · Loup</p>
+              <p className="text-[9px] text-muted mt-0.5">menaçant</p>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted text-center mt-3 italic">
+            Dis-moi A, B ou C et je nettoie
+          </p>
+        </div>
+
         {/* Mode tabs */}
         <div className="flex mb-6 bg-surface rounded-xl p-1 border border-border">
           {['create', 'join'].map((m) => (

@@ -228,9 +228,10 @@ class GameRoom {
     // Update les spectateurs morts (ils voient les choix d'équipe en direct)
     this._broadcastSpectator()
 
-    // En mode test : dès que le joueur humain a soumis, on annule les soumissions
-    // des bots qu'il a choisis (pour qu'ils puissent matcher), puis on les re-déclenche.
-    if (this.testMode && p && !p.isBot) {
+    // Quand un humain soumet : on annule les bots qu'il a choisis (pour qu'ils
+    // puissent matcher son intention), et si tous les humains ont fini, on
+    // retrigger l'ensemble des bots immédiatement avec leurs délais courts.
+    if (p && !p.isBot) {
       partners.forEach((botId) => {
         const bot = this.players.find((x) => x.id === botId && x.isBot)
         if (bot && bot.teamSubmitted) {
@@ -238,18 +239,10 @@ class GameRoom {
           this.teamChoices.delete(bot.id)
         }
       })
-      // Si pacte à 3 : on annule aussi les bots qui sont éventuellement entre eux pour pouvoir aligner les 3
-      if (partners.length === 2) {
-        partners.forEach((botId) => {
-          // Le 3e du pacte (= l'autre choisi par le humain) doit aussi pouvoir matcher
-          const otherBot = this.players.find((x) => x.id === botId && x.isBot)
-          if (otherBot && otherBot.teamSubmitted) {
-            otherBot.teamSubmitted = false
-            this.teamChoices.delete(otherBot.id)
-          }
-        })
+      // Si tous les humains ont fini → on réveille les bots tout de suite
+      if (this._humansAllSubmittedTeam()) {
+        this._triggerBots()
       }
-      this._triggerBots()
     }
 
     if (submitted >= total) {
@@ -453,6 +446,12 @@ class GameRoom {
           this.registerChoice(bot.id, { action: 'trahir', mise: 0 })
         }
       })
+    }
+
+    // Multijoueur : dès que tous les humains ont voté, on réveille les bots
+    // qui patientaient → ils s'enchaînent rapidement vers leur action finale.
+    if (p && !p.isBot && this._humansAllVoted()) {
+      this._triggerBots()
     }
 
     if (votesCount >= activeCount) {
@@ -810,17 +809,42 @@ class GameRoom {
 
   _triggerBots() {
     const bots = this.players.filter((p) => p.isBot)
+    // Index "stagger" pour les bots non encore engagés (espacement entre leurs
+    // soumissions → permet à chaque bot de voir les choix des précédents et de
+    // matcher s'ils l'ont choisi).
+    const pendingBots = bots.filter((b) =>
+      (this.phase === 'team_selection' && !b.teamSubmitted) ||
+      (this.phase === 'choice' && !b.voted)
+    )
+    let staggerIdx = 0
+
     bots.forEach((bot) => {
-      // Délai standard. En mode test pendant la sélection d'équipe ET pendant le
-      // choix d'action, on retarde fortement pour laisser le joueur humain soumettre
-      // d'abord (et que les bots puissent matcher / co-trahir si besoin).
-      // Si le humain est mort, on reprend un délai normal — pas la peine d'attendre.
-      const humanAlive = this.players.some((x) => !x.isBot && !x.eliminated)
-      const isTestSlowPhase = this.testMode && humanAlive &&
-        (this.phase === 'team_selection' || this.phase === 'choice')
-      const delay = isTestSlowPhase
-        ? 3500 + Math.random() * 2000
-        : 800 + Math.random() * 1500
+      // Pendant team_selection / choice, on synchronise le rythme des bots
+      // avec celui des humains :
+      //  - Tant que tous les humains n'ont pas soumis : on patiente (long délai)
+      //  - Dès que tous les humains ont fini : les bots s'enchaînent rapidement
+      //    avec un stagger (chaque bot voit le précédent et peut matcher).
+      const humansDone = this.phase === 'team_selection'
+        ? this._humansAllSubmittedTeam()
+        : this.phase === 'choice'
+          ? this._humansAllVoted()
+          : true
+
+      const myStagger = pendingBots.includes(bot) ? staggerIdx++ : 0
+
+      let delay
+      if (this.phase === 'team_selection' || this.phase === 'choice') {
+        if (humansDone) {
+          // Les humains ont fini → bots se réveillent rapidement avec écart
+          delay = 800 + myStagger * 700 + Math.random() * 400
+        } else {
+          // Les humains réfléchissent → on laisse beaucoup de temps
+          delay = 8000 + Math.random() * 4000
+        }
+      } else {
+        // Autres phases (ack mission/results/intermission)
+        delay = 800 + Math.random() * 1500
+      }
 
       if (this.phase === 'mission_reveal' && !bot.missionAcknowledged) {
         setTimeout(() => {
@@ -859,7 +883,7 @@ class GameRoom {
             if (!player || player.eliminated) continue
             if (picks.includes(bot.id)) incoming.push({ pid, picks })
           }
-          if (incoming.length > 0 && Math.random() < (this.testMode ? 0.9 : 0.7)) {
+          if (incoming.length > 0 && Math.random() < (this.testMode ? 0.9 : 0.8)) {
             const c = incoming[0]
             let matchedPicks
             if (c.picks.length === 1) {
@@ -969,6 +993,17 @@ class GameRoom {
   // Helpers : joueurs vivants uniquement
   alivePlayers() { return this.players.filter((p) => !p.eliminated) }
   aliveCount()   { return this.alivePlayers().length }
+
+  // Humains vivants (utiles pour synchroniser le rythme des bots avec eux)
+  _aliveHumans() { return this.players.filter((p) => !p.isBot && !p.eliminated) }
+  _humansAllSubmittedTeam() {
+    const humans = this._aliveHumans()
+    return humans.length === 0 || humans.every((p) => p.teamSubmitted)
+  }
+  _humansAllVoted() {
+    const humans = this._aliveHumans()
+    return humans.length === 0 || humans.every((p) => p.voted)
+  }
 
   // Diffuse aux observateurs (joueurs morts + vivants hors-pacte pendant les
   // phases d'action) l'état des coulisses : pactes formés et actions choisies

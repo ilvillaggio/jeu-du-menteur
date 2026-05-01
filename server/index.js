@@ -172,6 +172,10 @@ io.on('connection', (socket) => {
     if (!room) return cb({ error: 'Salle introuvable' })
     if (room.players[0]?.id !== socket.id) return cb({ error: 'Seul l\'hôte peut lancer' })
     if (room.players.length < 1) return cb({ error: 'Pas assez de joueurs' })
+    // Anti double-clic : si la partie est déjà démarrée, on refuse
+    if (room.phase !== 'waiting' && room.phase !== 'lobby') {
+      return cb({ error: 'Partie déjà démarrée' })
+    }
 
     // Auto-fill avec des bots pour atteindre playerCount
     while (room.players.length < room.playerCount) {

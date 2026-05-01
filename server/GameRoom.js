@@ -183,6 +183,7 @@ class GameRoom {
 
   // Phase 0 : révélation des missions au début de partie (chacun lit les siennes)
   _startMissionReveal() {
+    if (this.phase === 'mission_reveal') return
     this.phase = 'mission_reveal'
     this.players.forEach((p) => { p.missionAcknowledged = false })
 
@@ -216,6 +217,10 @@ class GameRoom {
 
   // Phase 1 : sélection d'équipe
   _startRound() {
+    // Anti double-appel : ne se déclenche que depuis 'mission_reveal' (1ère
+    // manche) ou 'intermission' (manches suivantes). Évite que round++ ne
+    // soit incrémenté deux fois si deux setTimeout tirent en parallèle.
+    if (this.phase !== 'mission_reveal' && this.phase !== 'intermission') return
     // Si moins de 2 joueurs vivants, la partie se termine immédiatement.
     if (this.aliveCount() < 2) {
       this._startFinal()
@@ -296,6 +301,8 @@ class GameRoom {
 
   // Phase 2 : révélation des pactes (mutuels ou non)
   _resolveTeams() {
+    // Anti double-appel : si on a déjà résolu, on sort
+    if (this.phase !== 'team_selection') return
     // Règle stricte : l'INTENTION détermine le pacte, pas de fallback.
     //   - Choisir 2 partenaires = intention "pacte à 3". Valide UNIQUEMENT si les 3
     //     joueurs ont tous sélectionné exactement les 2 autres. Sinon : hors-jeu.
@@ -419,6 +426,7 @@ class GameRoom {
 
   // Phase 3 : action + mise (seulement pour les joueurs avec équipe valide)
   _startActionPhase() {
+    if (this.phase !== 'team_reveal') return
     this.phase = 'choice'
     this.players.forEach((p) => {
       const validPartners = this.validTeams.get(p.id) || []
@@ -819,6 +827,7 @@ class GameRoom {
   }
 
   _startIntermission() {
+    if (this.phase === 'intermission' || this.phase === 'final') return
     this.phase = 'intermission'
     // Joueurs éliminés : auto-ack pour ne pas bloquer le passage à la manche suivante
     this.players.forEach((p) => { p.intermissionAcknowledged = !!p.eliminated })
@@ -856,6 +865,7 @@ class GameRoom {
   }
 
   _startFinal() {
+    if (this.phase === 'final') return
     this.phase = 'final'
     // À la fin : on révèle missionScore + finalScore pour tous
     const playersWithFinal = this.publicPlayers().map((pub) => {

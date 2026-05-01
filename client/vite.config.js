@@ -27,6 +27,11 @@ export default defineConfig({
       workbox: {
         // On laisse le service worker passer les requêtes Socket.IO et l'API directement
         navigateFallbackDenylist: [/^\/socket\.io/, /^\/api/],
+        // Le nouveau SW prend le contrôle immédiatement (pas d'attente de
+        // fermeture/réouverture de l'app pour avoir la dernière version)
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],

@@ -321,10 +321,12 @@ io.on('connection', (socket) => {
       }
     } else {
       // Pendant la partie : on garde le joueur (il pourra se reconnecter
-      // via son token). On le marque juste comme déconnecté.
+      // via son token). On le marque juste comme déconnecté + auto-ack toutes
+      // ses actions en cours pour ne pas bloquer la partie pour les autres.
       const p = room.players.find((x) => x.id === socket.id)
       if (p) {
         p.online = false
+        room.autoAckOffline(p)
         io.to(code).emit('game:state', room.stateForAll())
 
         // Au cas où plus personne d'humain ne soit en ligne, on supprime la salle

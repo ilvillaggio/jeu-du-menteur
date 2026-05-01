@@ -233,10 +233,14 @@ export default function WaitingRoomPage() {
           {me?.ready ? 'Annuler' : 'Je suis prêt !'}
         </button>
 
-        {/* Start hint when not all ready */}
-        {isHost && !allReady && players.length >= 2 && (
+        {/* Compteur "X/Y prêts" — visible par TOUS pour clarifier qu'on attend */}
+        {!allReady && players.length >= 2 && (
           <p className="text-center text-muted text-xs">
-            En attente que tout le monde soit prêt…
+            <span className="text-gold-light font-bold">{players.filter((p) => p.ready).length}</span>
+            {' / '}
+            <span>{players.length}</span>
+            {' joueurs prêts'}
+            {isHost ? ' — tu pourras lancer dès que tout le monde sera prêt' : ' — clique "Je suis prêt !" puis attends'}
           </p>
         )}
 

@@ -62,6 +62,7 @@ class GameRoom {
       isBot: false,
       online: true,
       eliminated: false, // Score < 0 → mort, ne joue plus
+      hasEverBetrayed: false, // pour la mission "0 trahisons sur la partie"
       token, // identifiant stable côté client (localStorage), pour reconnexion
     })
     socket.data.playerId = socket.id
@@ -104,6 +105,7 @@ class GameRoom {
       isBot: true,
       online: true,
       eliminated: false,
+      hasEverBetrayed: false,
     })
   }
 
@@ -961,6 +963,67 @@ class GameRoom {
     this.players.forEach((p, i) => {
       p.missions = [easy[i % easy.length], hard[i % hard.length]]
     })
+  }
+
+  // Quand un joueur se déconnecte en plein milieu d'une phase d'attente, on
+  // auto-valide ses actions pour ne pas bloquer les autres. La partie continue
+  // sans lui (il peut toujours se reconnecter via son token).
+  autoAckOffline(p) {
+    if (!p) return
+    switch (this.phase) {
+      case 'mission_reveal':
+        p.missionAcknowledged = true
+        if (this.players.every((x) => x.missionAcknowledged)) {
+          setTimeout(() => this._startRound(), 600)
+        }
+        break
+      case 'team_selection':
+        if (!p.teamSubmitted) {
+          p.teamSubmitted = true
+          this.teamChoices.set(p.id, [])
+          if (this.teamChoices.size >= this.players.length) {
+            setTimeout(() => this._resolveTeams(), 500)
+          }
+        }
+        break
+      case 'team_reveal':
+        if (!p.teamRevealAcknowledged) {
+          p.teamRevealAcknowledged = true
+          if (this.players.every((x) => x.teamRevealAcknowledged)) {
+            setTimeout(() => this._afterTeamReveal(), 300)
+          }
+        }
+        break
+      case 'choice':
+      case 'voting': {
+        const validPartners = this.validTeams.get(p.id) || []
+        if (validPartners.length > 0 && !p.voted) {
+          // Vote par défaut = coopérer (le moins agressif)
+          p.voted = true
+          this.choices.set(p.id, { action: 'cooperer', mise: 0 })
+          const activeCount = [...this.validTeams.values()].filter((v) => v.length > 0).length
+          if (this.choices.size >= activeCount) {
+            setTimeout(() => this._resolveRound(), 1000)
+          }
+        }
+        break
+      }
+      case 'results':
+        p.resultsAcknowledged = true
+        if (this.players.every((x) => x.resultsAcknowledged)) {
+          setTimeout(() => {
+            if (this.round >= this.totalRounds) this._startFinal()
+            else this._startIntermission()
+          }, 500)
+        }
+        break
+      case 'intermission':
+        p.intermissionAcknowledged = true
+        if (this.players.every((x) => x.intermissionAcknowledged)) {
+          setTimeout(() => this._startRound(), 400)
+        }
+        break
+    }
   }
 
   // Reconstruit le payload team_reveal pour un joueur donné (utile au reconnect

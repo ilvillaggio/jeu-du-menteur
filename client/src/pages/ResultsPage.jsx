@@ -102,13 +102,16 @@ export default function ResultsPage() {
         <div className="max-w-lg mx-auto pointer-events-auto">
           {acknowledged ? (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
               className="text-center card"
             >
               <p className="text-teal-light font-bold">✓ Prêt</p>
               <p className="text-muted text-sm mt-1">
-                En attente des autres… {resultsAckCount}/{totalPlayers}
+                En attente des autres…{' '}
+                <span className="text-white font-bold">{resultsAckCount}</span>
+                {' / '}
+                <span>{totalPlayers}</span>
               </p>
             </motion.div>
           ) : (
@@ -116,7 +119,7 @@ export default function ResultsPage() {
               onClick={acknowledge}
               className="btn-gold w-full min-h-[56px] rounded-2xl text-base font-bold"
             >
-              Continuer →
+              Continuer ({resultsAckCount}/{totalPlayers}) →
             </button>
           )}
         </div>

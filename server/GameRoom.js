@@ -970,26 +970,36 @@ class GameRoom {
 
           // 1) Si quelqu'un (humain ou autre bot) m'a déjà choisi → je matche
           //    avec une forte probabilité pour qu'un pacte mutuel se forme.
+          //    Priorité absolue aux humains : 95% de match avec eux pour
+          //    leur faciliter la formation de pactes. Pour les autres bots,
+          //    75% (toujours assez pour faire vivre la partie).
           const incoming = []
           for (const [pid, picks] of this.teamChoices.entries()) {
             if (pid === bot.id) continue
             const player = this.players.find((x) => x.id === pid)
             if (!player || player.eliminated) continue
-            if (picks.includes(bot.id)) incoming.push({ pid, picks })
-          }
-          if (incoming.length > 0 && Math.random() < (this.testMode ? 0.9 : 0.8)) {
-            const c = incoming[0]
-            let matchedPicks
-            if (c.picks.length === 1) {
-              // L'autre veut un pacte à 2 → je le choisis uniquement
-              matchedPicks = [c.pid]
-            } else {
-              // L'autre veut un pacte à 3 → je matche le triplet exact
-              const otherInPact = c.picks.find((id) => id !== bot.id)
-              matchedPicks = otherInPact ? [c.pid, otherInPact] : [c.pid]
+            if (picks.includes(bot.id)) {
+              incoming.push({ pid, picks, isHuman: !player.isBot })
             }
-            this.registerTeamChoice(bot.id, matchedPicks)
-            return
+          }
+          // Priorité aux humains dans la liste
+          incoming.sort((a, b) => Number(b.isHuman) - Number(a.isHuman))
+          if (incoming.length > 0) {
+            const c = incoming[0]
+            const matchProb = c.isHuman ? 0.95 : 0.75
+            if (Math.random() < matchProb) {
+              let matchedPicks
+              if (c.picks.length === 1) {
+                // L'autre veut un pacte à 2 → je le choisis uniquement
+                matchedPicks = [c.pid]
+              } else {
+                // L'autre veut un pacte à 3 → je matche le triplet exact
+                const otherInPact = c.picks.find((id) => id !== bot.id)
+                matchedPicks = otherInPact ? [c.pid, otherInPact] : [c.pid]
+              }
+              this.registerTeamChoice(bot.id, matchedPicks)
+              return
+            }
           }
 
           // 2) Personne ne m'a choisi → tirage aléatoire parmi les vivants.
@@ -1014,7 +1024,16 @@ class GameRoom {
         if (validPartners.length === 0) return
 
         const actions = ['cooperer', 'cooperer', 'trahir', 'profiter']
-        const finalAction = actions[Math.floor(Math.random() * actions.length)]
+        // Si un humain est dans le pacte, le bot favorise la coop (90%) pour
+        // ne pas pénaliser injustement le humain. Les pactes 100% bots
+        // gardent un comportement aléatoire pour varier la partie.
+        const humanInPact = validPartners.some((pid) => {
+          const partner = this.players.find((x) => x.id === pid)
+          return partner && !partner.isBot
+        })
+        const finalAction = humanInPact && Math.random() < 0.9
+          ? 'cooperer'
+          : actions[Math.floor(Math.random() * actions.length)]
         const previewAction = actions[Math.floor(Math.random() * actions.length)]
 
         // Preview anticipée : le bot "hésite" et choisit une première action

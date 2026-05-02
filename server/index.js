@@ -173,6 +173,18 @@ io.on('connection', (socket) => {
     cb({ ok: true })
   })
 
+  // ─── Rejouer (reset la salle + retour à waiting) ───
+  socket.on('room:replay', (cb = () => {}) => {
+    const room = rooms.get(socket.data.roomCode)
+    if (!room) return cb({ error: 'Salle introuvable' })
+    if (room.players[0]?.id !== socket.id) return cb({ error: 'Seul l\'hôte peut relancer' })
+    if (room.phase !== 'final') return cb({ error: 'La partie n\'est pas terminée' })
+
+    room.resetToWaiting()
+    io.to(room.code).emit('game:state', room.stateForAll())
+    cb({ ok: true })
+  })
+
   // ─── Start game ───
   socket.on('game:start', (cb = () => {}) => {
     const room = rooms.get(socket.data.roomCode)

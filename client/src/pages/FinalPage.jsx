@@ -6,10 +6,15 @@ import Avatar from '../components/Avatar'
 import FinaleSequence from '../components/FinaleSequence'
 
 export default function FinalPage() {
-  const { players, reset, updateGame } = useGame()
+  const { players, playerId, reset, updateGame } = useGame()
   const { socket } = useSocket()
   const [revealIndex, setRevealIndex] = useState(-1)
   const [cinemaDone, setCinemaDone] = useState(false)
+  const [replayPending, setReplayPending] = useState(false)
+
+  // Hôte = premier joueur non-bot dans la liste (les bots ont été ajoutés en
+  // remplissage, l'hôte est le premier humain)
+  const isHost = players.find((p) => !p.isBot)?.id === playerId
 
   function backToMenu() {
     // Nettoie côté serveur si on est encore dans une vraie salle, puis revient au lobby.
@@ -20,6 +25,18 @@ export default function FinalPage() {
     } catch {}
     reset()
     updateGame({ phase: 'lobby' })
+  }
+
+  function replay() {
+    if (replayPending) return
+    setReplayPending(true)
+    socket?.emit('room:replay', (res) => {
+      if (res?.error) {
+        setReplayPending(false)
+      }
+      // Au succès, le serveur broadcast game:state → tous les joueurs basculent
+      // automatiquement sur WaitingRoomPage (phase === 'waiting')
+    })
   }
 
   // Classement final : score public + missionScore (bonus des missions secrètes révélées ici)
@@ -123,6 +140,30 @@ export default function FinalPage() {
             <p className="text-5xl mb-2">🏆</p>
             <p className="text-2xl font-bold text-gold-light">{winner.name} gagne !</p>
             <p className="text-muted text-sm mt-1">avec {winner.finalScore} points</p>
+          </motion.div>
+        )}
+
+        {winner && isHost && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            onClick={replay}
+            disabled={replayPending}
+            className="w-full min-h-[52px] rounded-2xl bg-teal text-white font-bold text-base touch-manipulation mt-4 disabled:opacity-50"
+          >
+            {replayPending ? '⏳ Réinitialisation…' : '🔁 Rejouer (même salle)'}
+          </motion.button>
+        )}
+
+        {winner && !isHost && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            className="text-center text-muted text-xs italic mt-4"
+          >
+            L'hôte peut relancer une nouvelle partie dans cette salle…
           </motion.div>
         )}
 

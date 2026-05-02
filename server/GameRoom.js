@@ -159,6 +159,42 @@ class GameRoom {
 
   // ─── Game flow ───
 
+  // Reset complet pour rejouer une nouvelle partie dans la MÊME salle
+  // (sans avoir à recréer la salle, idéal pour enchaîner avec le même groupe)
+  resetToWaiting() {
+    this.phase = 'waiting'
+    this.round = 0
+    this.choices.clear()
+    this.choicePreviews?.clear()
+    this.teamChoices.clear()
+    this.validTeams.clear()
+    this.playerHistory.clear()
+    this.firstVoterThisRound = null
+    this._resolvingRound = false
+    this.lastRoundResults = null
+    // On retire les bots ajoutés à la partie précédente — ils seront re-créés
+    // au prochain game:start selon le playerCount choisi
+    this.players = this.players.filter((p) => !p.isBot)
+    this.players.forEach((p) => {
+      p.score = 0
+      p.missionScore = 0
+      p.eliminated = false
+      p.hasEverBetrayed = false
+      p.voted = false
+      p.teamSubmitted = false
+      p.missionAcknowledged = false
+      p.teamRevealAcknowledged = false
+      p.resultsAcknowledged = false
+      p.intermissionAcknowledged = false
+      p.ready = false
+      p.missions = []
+      if (p.autoActionTimer) {
+        clearTimeout(p.autoActionTimer)
+        p.autoActionTimer = null
+      }
+    })
+  }
+
   startGame() {
     // Reset complet du state au cas où la salle aurait été réutilisée
     // (en pratique on crée une nouvelle salle par partie, mais sécurité).

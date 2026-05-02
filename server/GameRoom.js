@@ -202,6 +202,16 @@ class GameRoom {
     })
 
     this._triggerBots()
+
+    // Sécurité : force l'ack des bots après 6s s'ils ont raté leur timer
+    setTimeout(() => {
+      if (this.phase !== 'mission_reveal') return
+      this.players.forEach((p) => {
+        if (p.isBot && !p.missionAcknowledged) {
+          this.acknowledgeMission(p.id)
+        }
+      })
+    }, 6000)
   }
 
   acknowledgeMission(id) {
@@ -665,6 +675,16 @@ class GameRoom {
     // Les bots acceptent automatiquement — on attend le clic humain pour continuer
     this._triggerBots()
     this._resolvingRound = false
+
+    // Sécurité : force l'ack des bots après 6s s'ils ont raté leur timer
+    setTimeout(() => {
+      if (this.phase !== 'results') return
+      this.players.forEach((p) => {
+        if (p.isBot && !p.resultsAcknowledged) {
+          this.acknowledgeResults(p.id)
+        }
+      })
+    }, 6000)
   }
 
   acknowledgeResults(id) {
@@ -864,10 +884,22 @@ class GameRoom {
       players: this.publicPlayers(),
       intermissionAckCount: 0,
       totalPlayers: this.players.length,
+      totalRounds: this.totalRounds, // toujours envoyer pour le bandeau "dernière manche"
     })
 
     // Bots cliquent automatiquement après un petit délai
     this._triggerBots()
+
+    // Sécurité : si après 6s un bot n'a pas ack (raté son timer pour
+    // une raison X), on le force pour ne pas bloquer la partie
+    setTimeout(() => {
+      if (this.phase !== 'intermission') return
+      this.players.forEach((p) => {
+        if (p.isBot && !p.intermissionAcknowledged) {
+          this.acknowledgeIntermission(p.id)
+        }
+      })
+    }, 6000)
   }
 
   acknowledgeIntermission(id) {

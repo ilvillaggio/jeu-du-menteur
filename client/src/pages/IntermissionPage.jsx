@@ -18,7 +18,9 @@ export default function IntermissionPage() {
   const ackCount = intermissionAckCount ?? 0
   const total = totalPlayers ?? players.length
   // La prochaine manche est-elle la dernière ?
-  const isBeforeFinalRound = round + 1 === (totalRounds || 5)
+  // ATTENTION : on exige totalRounds défini (pas de fallback à 5) — sinon
+  // le bandeau s'affichait à tort si le state n'était pas synchro
+  const isBeforeFinalRound = totalRounds > 0 && round + 1 === totalRounds
 
   function continuer() {
     if (acked) return

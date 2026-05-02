@@ -48,7 +48,7 @@ export default function ChoicePage() {
   const { players, playerId, round, totalRounds, isActive, myValidPartners, myMissions, pactMessages, spectator } = useGame()
   const { socket } = useSocket()
 
-  const isFinalRound = round === (totalRounds || 5)
+  const isFinalRound = totalRounds > 0 && round === totalRounds
 
   const [action, setAction] = useState(null)
   const [localSubmitted, setLocalSubmitted] = useState(false)

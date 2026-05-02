@@ -21,7 +21,7 @@ const initialState = {
   votesCount: 0,
   teamVotesCount: 0,
   totalPlayers: 0,
-  totalRounds: 5,
+  totalRounds: 0, // 0 tant que le serveur n'a pas confirmé la vraie valeur
   intermissionAckCount: 0,
   teamRevealAckCount: 0,
   // Team selection

@@ -39,7 +39,7 @@ export default function EliminatedPage() {
       </motion.div>
 
       <p className="text-center text-muted text-[11px] uppercase tracking-widest mb-3">
-        Manche {round} / {totalRounds || 5} · {phaseLabel(phase)}
+        Manche {round} / {totalRounds || '?'} · {phaseLabel(phase)}
       </p>
 
       <div className="flex-1">

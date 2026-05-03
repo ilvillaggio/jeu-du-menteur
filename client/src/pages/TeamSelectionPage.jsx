@@ -10,7 +10,7 @@ import ScoreboardDrawer from '../components/ScoreboardDrawer'
 import Avatar from '../components/Avatar'
 
 export default function TeamSelectionPage() {
-  const { players, playerId, round, teamVotesCount, totalPlayers, myMissions } = useGame()
+  const { players, playerId, round, teamVotesCount, totalPlayers, myMissions, myPreviousPartners } = useGame()
   const { socket } = useSocket()
 
   const [selected, setSelected] = useState([])
@@ -25,8 +25,10 @@ export default function TeamSelectionPage() {
   // On ne propose que les joueurs vivants (pas d'éliminés comme partenaires)
   const others = players.filter((p) => p.id !== playerId && !p.eliminated)
   const completedMissions = myMissions.filter((m) => m.completed).length
+  const previousSet = new Set(myPreviousPartners || [])
 
   function toggle(id) {
+    if (previousSet.has(id)) return // partenaire du round précédent : interdit
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 2 ? [...prev, id] : prev
     )
@@ -118,6 +120,7 @@ export default function TeamSelectionPage() {
             <div className="flex flex-col gap-2">
               {others.map((p, i) => {
                 const isOffline = p.online === false
+                const wasPartner = previousSet.has(p.id)
                 return (
                   <motion.button
                     key={p.id}
@@ -125,29 +128,37 @@ export default function TeamSelectionPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => toggle(p.id)}
+                    disabled={wasPartner}
                     className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors min-h-[68px] ${
-                      selected.includes(p.id)
-                        ? 'border-gold bg-gold/10 text-white'
-                        : isOffline
-                          ? 'border-crimson/30 bg-crimson/5 text-muted'
-                          : 'border-border bg-surface text-muted'
+                      wasPartner
+                        ? 'border-border bg-surface/40 opacity-30 cursor-not-allowed'
+                        : selected.includes(p.id)
+                          ? 'border-gold bg-gold/10 text-white'
+                          : isOffline
+                            ? 'border-crimson/30 bg-crimson/5 text-muted'
+                            : 'border-border bg-surface text-muted'
                     }`}
                   >
-                    <Avatar src={p.avatar} className={`w-12 h-12 text-3xl ${isOffline ? 'opacity-40' : ''}`} animated={!isOffline} />
+                    <Avatar src={p.avatar} className={`w-12 h-12 text-3xl ${isOffline || wasPartner ? 'opacity-40' : ''}`} animated={!isOffline && !wasPartner} />
                     <div className="flex-1 text-left">
-                      <p className="font-bold text-base flex items-center gap-2">
+                      <p className="font-bold text-base flex items-center gap-2 flex-wrap">
                         {p.name}
-                        {p.teamSubmitted && (
+                        {p.teamSubmitted && !wasPartner && (
                           <span className="text-teal-light text-xs font-normal" title="A déjà validé son pacte">
                             ✓ validé
                           </span>
                         )}
+                        {wasPartner && (
+                          <span className="text-muted text-[10px] font-normal italic">
+                            (pacte précédent)
+                          </span>
+                        )}
                       </p>
-                      {isOffline && (
+                      {isOffline && !wasPartner && (
                         <p className="text-[10px] text-crimson-light/80 mt-0.5">📡 hors ligne · risqué</p>
                       )}
                     </div>
-                    {selected.includes(p.id) && (
+                    {selected.includes(p.id) && !wasPartner && (
                       <span className="text-gold text-xl">✓</span>
                     )}
                   </motion.button>

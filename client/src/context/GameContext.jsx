@@ -27,6 +27,7 @@ const initialState = {
   // Team selection
   teamReveal: null,       // { pacts: [{id,name,avatar,valid}], isActive }
   myValidPartners: [],    // IDs des partenaires mutuels
+  myPreviousPartners: [], // IDs des partenaires du round précédent (interdits ce round)
   isActive: true,         // false = hors-jeu ce tour
 
   // Messages privés (persistent à la déconnexion)

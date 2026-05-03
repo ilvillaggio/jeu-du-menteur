@@ -40,6 +40,7 @@ class GameRoom {
     this.choicePreviews = new Map() // playerId → action (sélection en cours, pas validée)
     this.teamChoices = new Map()   // playerId → [partnerId, partnerId]
     this.validTeams = new Map()    // playerId → [mutualPartnerId, ...]
+    this.previousPartners = new Map() // playerId → [partnerId, ...] du round précédent
     this.playerHistory = new Map() // playerId → [{ round, action, mise, partners, delta }]
     this.firstVoterThisRound = null
   }
@@ -168,6 +169,7 @@ class GameRoom {
     this.choicePreviews?.clear()
     this.teamChoices.clear()
     this.validTeams.clear()
+    this.previousPartners?.clear()
     this.playerHistory.clear()
     this.firstVoterThisRound = null
     this._resolvingRound = false
@@ -203,6 +205,7 @@ class GameRoom {
     this.choicePreviews?.clear()
     this.teamChoices.clear()
     this.validTeams.clear()
+    this.previousPartners?.clear()
     this.playerHistory.clear()
     this.firstVoterThisRound = null
     this._resolvingRound = false
@@ -715,6 +718,13 @@ class GameRoom {
         myMissionScore: p.missionScore,
         myHistory: this._historyForPlayer(p),
       })
+    })
+
+    // Mémorise les pactes du round qui vient de finir : interdit la
+    // re-sélection des mêmes partenaires au round suivant
+    this.previousPartners = new Map()
+    this.validTeams.forEach((partners, pid) => {
+      this.previousPartners.set(pid, [...partners])
     })
 
     // Les bots acceptent automatiquement — on attend le clic humain pour continuer
@@ -1384,6 +1394,7 @@ class GameRoom {
       myMissions: player.missions,
       myMissionScore: player.missionScore,
       myHistory: this._historyForPlayer(player),
+      myPreviousPartners: this.previousPartners?.get(player.id) || [],
     }
   }
 

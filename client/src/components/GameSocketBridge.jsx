@@ -6,7 +6,7 @@ import { getOrCreateToken, getSession, clearRoom } from '../lib/session'
 // Écoute tous les événements serveur et met à jour le GameContext
 export default function GameSocketBridge() {
   const { socket } = useSocket()
-  const { updateGame, setRoom, setPlayer, addWhisper, addPactMessage, clearPactMessages, phase } = useGame()
+  const { updateGame, setRoom, setPlayer, addWhisper } = useGame()
 
   // Auto-reconnect : si on a un roomCode + token en localStorage, on tente de
   // retrouver la partie. Pas de timeout brutal qui ramènerait au lobby (un
@@ -68,7 +68,6 @@ export default function GameSocketBridge() {
     )
     socket.on('room:joined', ({ roomCode }) => setRoom(roomCode))
     socket.on('whisper:received', (whisper) => addWhisper({ ...whisper, read: false }))
-    socket.on('pact:received', (msg) => addPactMessage({ ...msg, read: false }))
     socket.on('spectator:update', (data) => updateGame({ spectator: data }))
 
     return () => {
@@ -82,15 +81,9 @@ export default function GameSocketBridge() {
       socket.off('game:final')
       socket.off('room:joined')
       socket.off('whisper:received')
-      socket.off('pact:received')
       socket.off('spectator:update')
     }
   }, [socket])
-
-  // Reset le chat de pacte quand on entre dans la phase team_selection (nouvelle manche)
-  useEffect(() => {
-    if (phase === 'team_selection') clearPactMessages()
-  }, [phase, clearPactMessages])
 
   return null
 }

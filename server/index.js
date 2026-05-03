@@ -261,39 +261,6 @@ io.on('connection', (socket) => {
     room.registerChoicePreview(socket.id, action)
   })
 
-  // ─── Pact chat : message à tous les membres du pacte mutuel ───
-  socket.on('pact:send', ({ text }, cb = () => {}) => {
-    const room = rooms.get(socket.data.roomCode)
-    if (!room) return cb({ error: 'Salle introuvable' })
-
-    const sender = room.players.find((p) => p.id === socket.id)
-    if (!sender) return cb({ error: 'Non autorisé' })
-
-    const partners = room.validTeams.get(socket.id) || []
-    if (partners.length === 0) return cb({ error: 'Pas de pacte actif' })
-
-    const trimmed = (text || '').toString().trim().slice(0, 300)
-    if (!trimmed) return cb({ error: 'Message vide' })
-
-    const msg = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      from: sender.id,
-      fromName: sender.name,
-      fromAvatar: sender.avatar,
-      text: trimmed,
-      at: Date.now(),
-    }
-
-    // Diffuse aux membres humains du pacte (l'envoyeur inclus, pour synchro)
-    const recipients = [socket.id, ...partners]
-    recipients.forEach((rid) => {
-      const r = room.players.find((p) => p.id === rid)
-      if (r && !r.isBot) io.to(rid).emit('pact:received', msg)
-    })
-
-    cb({ ok: true, message: msg })
-  })
-
   // ─── Whisper (message privé entre joueurs) ───
   socket.on('whisper:send', ({ to, text }, cb = () => {}) => {
     const room = rooms.get(socket.data.roomCode)

@@ -135,7 +135,14 @@ export default function TeamSelectionPage() {
                   >
                     <Avatar src={p.avatar} className={`w-12 h-12 text-3xl ${isOffline ? 'opacity-40' : ''}`} animated={!isOffline} />
                     <div className="flex-1 text-left">
-                      <p className="font-bold text-base">{p.name}</p>
+                      <p className="font-bold text-base flex items-center gap-2">
+                        {p.name}
+                        {p.teamSubmitted && (
+                          <span className="text-teal-light text-xs font-normal" title="A déjà validé son pacte">
+                            ✓ validé
+                          </span>
+                        )}
+                      </p>
                       {isOffline && (
                         <p className="text-[10px] text-crimson-light/80 mt-0.5">📡 hors ligne · risqué</p>
                       )}

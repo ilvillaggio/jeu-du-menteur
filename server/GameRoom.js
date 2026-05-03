@@ -1030,7 +1030,26 @@ class GameRoom {
       const missionScore = priv?.missionScore ?? 0
       return { ...pub, missionScore, finalScore: (priv?.score ?? 0) + missionScore }
     })
-    this.io.to(this.code).emit('game:final', { players: playersWithFinal, phase: 'final' })
+
+    // Génère l'ordre des scènes UNE FOIS pour que tous les clients voient
+    // exactement la même cinématique (avant : chaque client shufflait
+    // localement avec Math.random → cinématiques différentes par joueur)
+    const SCENE_KINDS = [
+      'gift', 'poison', 'rooftop', 'dagger', 'trapdoor', 'banana',
+      'drowning', 'hammer', 'bridge', 'wolf', 'electrocution',
+      'arrow', 'spike_trap', 'fireplace', 'chandelier', 'well',
+    ]
+    const finalScenes = [...SCENE_KINDS]
+    for (let i = finalScenes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[finalScenes[i], finalScenes[j]] = [finalScenes[j], finalScenes[i]]
+    }
+
+    this.io.to(this.code).emit('game:final', {
+      players: playersWithFinal,
+      phase: 'final',
+      finalScenes,
+    })
   }
 
   // ─── Bots ───

@@ -64,13 +64,22 @@ const SCENE_LIBRARY = [
   { kind: 'well',         subtitle: 'Le puits sans fond' },
 ]
 
-function buildActs(sorted) {
-  // Mélange aléatoire des scènes à chaque partie, sans répétition.
-  // On a 16 scènes pour max 10 actes (11 joueurs) → toujours distinctes.
-  const pool = [...SCENE_LIBRARY]
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+function buildActs(sorted, sceneKinds) {
+  // Si le serveur a fourni l'ordre des scènes, on l'utilise pour que tous
+  // les clients voient la même cinématique. Sinon (cas dégradé), on
+  // shuffle localement (peut donner des cinematiques différentes par client).
+  let pool
+  if (Array.isArray(sceneKinds) && sceneKinds.length > 0) {
+    pool = sceneKinds
+      .map((k) => SCENE_LIBRARY.find((s) => s.kind === k))
+      .filter(Boolean)
+    if (pool.length === 0) pool = [...SCENE_LIBRARY] // fallback si kinds invalides
+  } else {
+    pool = [...SCENE_LIBRARY]
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[pool[i], pool[j]] = [pool[j], pool[i]]
+    }
   }
   return sorted.slice(0, -1).map((victim, i) => {
     const lib = pool[i % pool.length]
@@ -87,10 +96,10 @@ function buildActs(sorted) {
 }
 
 // ============ Orchestrateur ============
-export default function FinaleSequence({ sorted, onComplete }) {
-  // buildActs mélange les scènes au tirage : on le mémorise pour que la liste
-  // reste stable pendant toute la séquence (sinon chaque render re-shuffle).
-  const [acts] = useState(() => buildActs(sorted))
+export default function FinaleSequence({ sorted, sceneKinds, onComplete }) {
+  // L'ordre des scènes vient du serveur (sceneKinds) → tous les clients
+  // ont la même cinématique. Mémorisé pour stabilité.
+  const [acts] = useState(() => buildActs(sorted, sceneKinds))
   const [actIdx, setActIdx] = useState(0)
   const [phase, setPhase] = useState('scene') // 'scene' | 'interlude' | 'blackout'
   const droneRef = useRef(null)

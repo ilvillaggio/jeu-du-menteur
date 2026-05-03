@@ -36,6 +36,8 @@ const initialState = {
   whispers: [],           // [{ id, from, fromName, to, toName, text, at, read? }]
   // Mode spectateur (uniquement quand le joueur est éliminé) : vue des coulisses
   spectator: null,        // { phase, round, pacts, solos, teamPicks, actions } | null
+  // Cinématique finale : ordre des scènes (synchronisé via le serveur)
+  finalScenes: null,      // ['gift', 'poison', ...] | null
 }
 
 function reducer(state, action) {

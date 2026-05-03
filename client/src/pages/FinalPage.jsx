@@ -6,7 +6,7 @@ import Avatar from '../components/Avatar'
 import FinaleSequence from '../components/FinaleSequence'
 
 export default function FinalPage() {
-  const { players, playerId, reset, updateGame } = useGame()
+  const { players, playerId, reset, updateGame, finalScenes } = useGame()
   const { socket } = useSocket()
   const [revealIndex, setRevealIndex] = useState(-1)
   const [cinemaDone, setCinemaDone] = useState(false)
@@ -70,6 +70,7 @@ export default function FinalPage() {
     return (
       <FinaleSequence
         sorted={sorted}
+        sceneKinds={finalScenes}
         onComplete={() => setCinemaDone(true)}
       />
     )

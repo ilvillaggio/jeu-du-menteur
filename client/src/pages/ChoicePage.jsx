@@ -10,44 +10,49 @@ import ScoreboardDrawer from '../components/ScoreboardDrawer'
 import Avatar from '../components/Avatar'
 import PactsLiveView from '../components/PactsLiveView'
 
-const ACTIONS = [
-  {
-    id: 'profiter',
-    label: 'Profiter',
-    icon: '😏',
-    desc: 'Tu joues seul. Gain garanti, sans surprise.',
-    payoff: '+25',
-    sub: 'garanti',
-    idle: 'border-gold/40 bg-surface',
-    active: 'border-gold-light bg-gold/20',
-  },
-  {
-    id: 'cooperer',
-    label: 'Coopérer',
-    icon: '🤝',
-    desc: 'Tu joues honnêtement avec tes partenaires.',
-    payoff: '+50',
-    sub: 'si TOUT le pacte coopère. Si ≥ 2 trahissent, tu rafles leur butin (75 par traître).',
-    idle: 'border-teal/40 bg-surface',
-    active: 'border-teal-light bg-teal/20',
-  },
-  {
-    id: 'trahir',
-    label: 'Trahir',
-    icon: '🗡️',
-    desc: 'Tu retournes contre tes partenaires. Risqué.',
-    payoff: '+75 / −75',
-    sub: 'seul à trahir dans ton pacte, sinon −75 pour tous les traîtres',
-    idle: 'border-crimson/40 bg-surface',
-    active: 'border-crimson-light bg-crimson/20',
-  },
-]
+// Construit la liste des actions avec payoffs adaptés (×2 à la dernière manche)
+function buildActions(isFinalRound) {
+  const x = (n) => (isFinalRound ? n * 2 : n)
+  return [
+    {
+      id: 'profiter',
+      label: 'Profiter',
+      icon: '😏',
+      desc: 'Tu joues seul. Gain garanti, sans surprise.',
+      payoff: `+${x(25)}`,
+      sub: 'garanti',
+      idle: 'border-gold/40 bg-surface',
+      active: 'border-gold-light bg-gold/20',
+    },
+    {
+      id: 'cooperer',
+      label: 'Coopérer',
+      icon: '🤝',
+      desc: 'Tu joues honnêtement avec tes partenaires.',
+      payoff: `+${x(50)}`,
+      sub: `si TOUT le pacte coopère. Si ≥ 2 trahissent, tu rafles leur butin (${x(75)} par traître).`,
+      idle: 'border-teal/40 bg-surface',
+      active: 'border-teal-light bg-teal/20',
+    },
+    {
+      id: 'trahir',
+      label: 'Trahir',
+      icon: '🗡️',
+      desc: 'Tu retournes contre tes partenaires. Risqué.',
+      payoff: `+${x(75)} / −${x(75)}`,
+      sub: `seul à trahir dans ton pacte, sinon −${x(75)} pour tous les traîtres`,
+      idle: 'border-crimson/40 bg-surface',
+      active: 'border-crimson-light bg-crimson/20',
+    },
+  ]
+}
 
 export default function ChoicePage() {
   const { players, playerId, round, totalRounds, isActive, myValidPartners, myMissions, spectator } = useGame()
   const { socket } = useSocket()
 
   const isFinalRound = totalRounds > 0 && round === totalRounds
+  const ACTIONS = buildActions(isFinalRound)
 
   const [action, setAction] = useState(null)
   const [localSubmitted, setLocalSubmitted] = useState(false)

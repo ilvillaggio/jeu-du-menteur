@@ -30,7 +30,13 @@ export default function TeamSelectionPage() {
   const submitted = localSubmitted || !!me?.teamSubmitted
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [whispersOpen, setWhispersOpen] = useState(false)
+  const [whisperTarget, setWhisperTarget] = useState(null) // ouvre le chat directement avec ce joueur
   const [scoreboardOpen, setScoreboardOpen] = useState(false)
+
+  function openWhisperWith(peerId) {
+    setWhisperTarget(peerId)
+    setWhispersOpen(true)
+  }
 
   // On ne propose que les joueurs vivants (pas d'éliminés comme partenaires)
   const others = players.filter((p) => p.id !== playerId && !p.eliminated)
@@ -193,6 +199,20 @@ export default function TeamSelectionPage() {
                     {selected.includes(p.id) && !wasPartner && (
                       <span className="text-gold text-xl">✓</span>
                     )}
+                    {/* Bouton chat privé : tap court ouvre la conversation
+                        directement avec ce joueur (stop propagation pour ne
+                        pas déclencher la sélection en même temps) */}
+                    {!wasPartner && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); openWhisperWith(p.id) }}
+                        className="ml-1 w-9 h-9 flex items-center justify-center rounded-xl bg-noir/40 text-lg active:scale-95 touch-manipulation"
+                        title={`Message privé à ${p.name}`}
+                      >
+                        💬
+                      </span>
+                    )}
                   </motion.button>
                 )
               })}
@@ -230,7 +250,11 @@ export default function TeamSelectionPage() {
       )}
 
       <MissionsDrawer open={missionsOpen} onClose={() => setMissionsOpen(false)} />
-      <WhispersDrawer open={whispersOpen} onClose={() => setWhispersOpen(false)} />
+      <WhispersDrawer
+        open={whispersOpen}
+        onClose={() => { setWhispersOpen(false); setWhisperTarget(null) }}
+        presetPeerId={whisperTarget}
+      />
       <ScoreboardDrawer open={scoreboardOpen} onClose={() => setScoreboardOpen(false)} />
     </div>
   )

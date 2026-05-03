@@ -9,7 +9,7 @@ function formatTime(at) {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-export default function WhispersDrawer({ open, onClose }) {
+export default function WhispersDrawer({ open, onClose, presetPeerId }) {
   const { players, playerId, whispers, addWhisper, markWhispersRead } = useGame()
   const { socket } = useSocket()
 
@@ -17,6 +17,15 @@ export default function WhispersDrawer({ open, onClose }) {
   const [draft, setDraft] = useState('')
   const [sendError, setSendError] = useState('')
   const threadRef = useRef(null)
+
+  // Si un peerId est pré-sélectionné à l'ouverture, ouvre directement le fil
+  useEffect(() => {
+    if (open && presetPeerId) {
+      setActivePeerId(presetPeerId)
+      setDraft('')
+      setSendError('')
+    }
+  }, [open, presetPeerId])
 
   const others = players.filter((p) => p.id !== playerId)
 

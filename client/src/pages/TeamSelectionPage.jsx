@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useGame } from '../context/GameContext'
 import { useSocket } from '../context/SocketContext'
@@ -10,8 +10,18 @@ import ScoreboardDrawer from '../components/ScoreboardDrawer'
 import Avatar from '../components/Avatar'
 
 export default function TeamSelectionPage() {
-  const { players, playerId, round, teamVotesCount, totalPlayers, myMissions, myPreviousPartners } = useGame()
+  const { players, playerId, round, teamVotesCount, totalPlayers, myMissions, myPreviousPartners, teamSelectionPhase, teamSelectionPhaseEndsAt } = useGame()
   const { socket } = useSocket()
+
+  // Chrono qui décrémente jusqu'à la fin de la sous-phase
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 500)
+    return () => clearInterval(t)
+  }, [])
+  const secondsLeft = Math.max(0, Math.ceil((teamSelectionPhaseEndsAt - now) / 1000))
+  const isDiscussion = teamSelectionPhase === 'discussion'
+  const isValidation = teamSelectionPhase === 'validation'
 
   const [selected, setSelected] = useState([])
   const [localSubmitted, setLocalSubmitted] = useState(false)
@@ -29,6 +39,7 @@ export default function TeamSelectionPage() {
 
   function toggle(id) {
     if (previousSet.has(id)) return // partenaire du round précédent : interdit
+    if (isDiscussion) return // sélections bloquées pendant la phase discussion
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 2 ? [...prev, id] : prev
     )
@@ -36,6 +47,7 @@ export default function TeamSelectionPage() {
 
   function submit() {
     if (selected.length < 1 || selected.length > 2 || submitted) return
+    if (!isValidation) return // sélections bloquées pendant la phase discussion
     socket.emit('player:team_choice', selected, () => setLocalSubmitted(true))
   }
 
@@ -43,6 +55,26 @@ export default function TeamSelectionPage() {
     <div className="min-h-screen flex flex-col px-4 pt-5 pb-6 safe-bottom max-w-lg mx-auto w-full">
       {/* Identity */}
       <IdentityCard />
+
+      {/* Bandeau chrono : phase discussion ou validation */}
+      {(isDiscussion || isValidation) && (
+        <div className={`mb-3 p-3 rounded-2xl border-2 text-center ${
+          isDiscussion
+            ? 'border-gold/50 bg-gold/10'
+            : 'border-teal/50 bg-teal/10'
+        }`}>
+          <p className={`text-[10px] uppercase tracking-widest font-bold mb-0.5 ${
+            isDiscussion ? 'text-gold-light' : 'text-teal-light'
+          }`}>
+            {isDiscussion ? '💬 Phase discussion' : '⚔️ Phase sélection'}
+          </p>
+          <p className="text-white text-sm">
+            {isDiscussion
+              ? `Discutez en privé. Les sélections s'ouvrent dans ${secondsLeft}s.`
+              : `Plus que ${secondsLeft}s pour valider votre pacte.`}
+          </p>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
@@ -171,21 +203,23 @@ export default function TeamSelectionPage() {
             <div className="max-w-lg mx-auto pointer-events-auto">
               <button
                 onClick={submit}
-                disabled={selected.length < 1}
+                disabled={selected.length < 1 || !isValidation}
                 className="btn-gold w-full min-h-[56px] rounded-2xl text-base font-bold disabled:opacity-30"
               >
-                {selected.length === 1
-                  ? 'Valider — pacte à 2'
-                  : selected.length === 2
-                  ? 'Valider — pacte à 3'
-                  : 'Valider mon équipe'}
+                {isDiscussion
+                  ? `🔒 Discussion en cours (${secondsLeft}s)`
+                  : selected.length === 1
+                    ? 'Valider — pacte à 2'
+                    : selected.length === 2
+                      ? 'Valider — pacte à 3'
+                      : 'Valider mon équipe'}
               </button>
-              {selected.length === 0 && (
+              {isValidation && selected.length === 0 && (
                 <p className="text-center text-muted text-xs mt-2">
                   Choisis 1 partenaire (pacte à 2) ou 2 partenaires (pacte à 3)
                 </p>
               )}
-              {selected.length === 2 && (
+              {isValidation && selected.length === 2 && (
                 <p className="text-center text-muted text-xs mt-2">
                   Pacte à 3 valide uniquement si vos 3 choix matchent.
                 </p>

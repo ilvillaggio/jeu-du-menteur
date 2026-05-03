@@ -41,6 +41,8 @@ class GameRoom {
     this.teamChoices = new Map()   // playerId → [partnerId, partnerId]
     this.validTeams = new Map()    // playerId → [mutualPartnerId, ...]
     this.previousPartners = new Map() // playerId → [partnerId, ...] du round précédent
+    this.teamSelectionPhase = null    // 'discussion' (1 min, sélections bloquées) | 'validation' (1 min max, sélections autorisées)
+    this.teamSelectionPhaseEndsAt = 0 // timestamp Unix de fin de la sous-phase courante
     this.playerHistory = new Map() // playerId → [{ round, action, mise, partners, delta }]
     this.firstVoterThisRound = null
   }
@@ -293,25 +295,67 @@ class GameRoom {
       }
     })
     this.phase = 'team_selection'
+    // Sous-phase "discussion" : 1 minute pour parler avant de pouvoir
+    // sélectionner. Les whispers privés sont actifs, mais aucune sélection
+    // d'équipe ne peut être validée pendant cette période.
+    this.teamSelectionPhase = 'discussion'
+    this.teamSelectionPhaseEndsAt = Date.now() + 60 * 1000
 
     this.players.forEach((p) => {
       this.io.to(p.id).emit('game:state', this._stateFor(p))
     })
 
-    // Re-arme l'auto-action 15s pour les joueurs toujours offline → la partie
-    // continuera sans eux à chaque nouvelle manche (15s par manche, pas 30+15)
+    // Re-arme l'auto-action pour les offline (déclenchée à la sous-phase
+    // 'validation' uniquement, gérée dans scheduleAutoActionOffline)
     this.players.forEach((p) => {
       if (!p.isBot && !p.eliminated && !p.online) {
         this.scheduleAutoActionOffline(p)
       }
     })
 
+    // Pas de _triggerBots ici : les bots attendent la sous-phase 'validation'
+
+    // Après 1 min de discussion → passage à 'validation' (1 min max)
+    setTimeout(() => {
+      if (this.phase !== 'team_selection') return
+      if (this.teamSelectionPhase !== 'discussion') return
+      this._startTeamSelectionValidation()
+    }, 60 * 1000)
+  }
+
+  _startTeamSelectionValidation() {
+    if (this.phase !== 'team_selection') return
+    this.teamSelectionPhase = 'validation'
+    this.teamSelectionPhaseEndsAt = Date.now() + 60 * 1000
+
+    // Diffuse l'état mis à jour à tous (les sélections deviennent actives)
+    this.players.forEach((p) => {
+      this.io.to(p.id).emit('game:state', this._stateFor(p))
+    })
+
+    // Maintenant les bots peuvent voter
     this._triggerBots()
+
+    // Auto-skip après 1 min : on résout les pactes même si tout le monde
+    // n'a pas validé (les sélections vides comptent pour "passe ce tour")
+    setTimeout(() => {
+      if (this.phase === 'team_selection') {
+        // Pour les joueurs qui n'ont pas validé, on enregistre une équipe vide
+        this.players.forEach((p) => {
+          if (!p.teamSubmitted) {
+            p.teamSubmitted = true
+            this.teamChoices.set(p.id, [])
+          }
+        })
+        this._resolveTeams()
+      }
+    }, 60 * 1000)
   }
 
   // Phase 1 → collecte les choix d'équipe
   registerTeamChoice(playerId, partners) {
     if (this.phase !== 'team_selection') return
+    if (this.teamSelectionPhase !== 'validation') return // discussion en cours, sélections bloquées
     if (this.teamChoices.has(playerId)) return  // évite les doubles soumissions
 
     const p = this.players.find((x) => x.id === playerId)
@@ -1037,7 +1081,7 @@ class GameRoom {
           if (this.phase !== 'intermission') return
           this.acknowledgeIntermission(bot.id)
         }, 1500 + Math.random() * 1500)
-      } else if (this.phase === 'team_selection' && !bot.teamSubmitted) {
+      } else if (this.phase === 'team_selection' && this.teamSelectionPhase === 'validation' && !bot.teamSubmitted) {
         setTimeout(() => {
           if (this.phase !== 'team_selection') return
           if (bot.teamSubmitted) return // déjà soumis (re-trigger après humain)
@@ -1385,6 +1429,8 @@ class GameRoom {
       totalRounds: this.totalRounds,
       votesCount: this.choices.size,
       teamVotesCount: this.teamChoices.size,
+      teamSelectionPhase: this.teamSelectionPhase,
+      teamSelectionPhaseEndsAt: this.teamSelectionPhaseEndsAt,
     }
   }
 

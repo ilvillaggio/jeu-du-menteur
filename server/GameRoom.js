@@ -239,15 +239,11 @@ class GameRoom {
 
     this._triggerBots()
 
-    // Sécurité : force l'ack des bots après 6s s'ils ont raté leur timer
+    // Auto-skip après 5s : on passe à la suite même si tout le monde n'a
+    // pas cliqué (la phase mission_reveal n'a pas d'enjeu de jeu)
     setTimeout(() => {
-      if (this.phase !== 'mission_reveal') return
-      this.players.forEach((p) => {
-        if (p.isBot && !p.missionAcknowledged) {
-          this.acknowledgeMission(p.id)
-        }
-      })
-    }, 6000)
+      if (this.phase === 'mission_reveal') this._startRound()
+    }, 5000)
   }
 
   acknowledgeMission(id) {
@@ -456,6 +452,12 @@ class GameRoom {
     if (this.players.every((p) => p.teamRevealAcknowledged)) {
       setTimeout(() => this._afterTeamReveal(), 500)
     }
+
+    // Auto-skip après 5s : passe au choix d'action même si quelqu'un n'a
+    // pas cliqué le bouton "Continuer"
+    setTimeout(() => {
+      if (this.phase === 'team_reveal') this._afterTeamReveal()
+    }, 5000)
   }
 
   acknowledgeTeamReveal(id) {
@@ -508,6 +510,13 @@ class GameRoom {
     })
 
     this._triggerBots()
+
+    // Auto-skip après 10s : on passe à la résolution même si tout le monde
+    // n'a pas voté (les joueurs sans choix coopèrent par défaut via le
+    // fallback de _resolveRound). 10s = temps de réflexion raisonnable.
+    setTimeout(() => {
+      if (this.phase === 'choice') this._resolveRound()
+    }, 10000)
   }
 
   // Phase 3 → preview de l'action (avant validation). Permet aux observateurs
@@ -712,15 +721,14 @@ class GameRoom {
     this._triggerBots()
     this._resolvingRound = false
 
-    // Sécurité : force l'ack des bots après 6s s'ils ont raté leur timer
+    // Auto-skip après 5s : passe à l'intermission ou au final même si quelqu'un
+    // n'a pas cliqué Continuer
     setTimeout(() => {
-      if (this.phase !== 'results') return
-      this.players.forEach((p) => {
-        if (p.isBot && !p.resultsAcknowledged) {
-          this.acknowledgeResults(p.id)
-        }
-      })
-    }, 6000)
+      if (this.phase === 'results') {
+        if (this.round >= this.totalRounds) this._startFinal()
+        else this._startIntermission()
+      }
+    }, 5000)
   }
 
   acknowledgeResults(id) {
@@ -926,16 +934,11 @@ class GameRoom {
     // Bots cliquent automatiquement après un petit délai
     this._triggerBots()
 
-    // Sécurité : si après 6s un bot n'a pas ack (raté son timer pour
-    // une raison X), on le force pour ne pas bloquer la partie
+    // Auto-skip après 5s : passe à la manche suivante même si quelqu'un n'a
+    // pas cliqué "Continuer la partie"
     setTimeout(() => {
-      if (this.phase !== 'intermission') return
-      this.players.forEach((p) => {
-        if (p.isBot && !p.intermissionAcknowledged) {
-          this.acknowledgeIntermission(p.id)
-        }
-      })
-    }, 6000)
+      if (this.phase === 'intermission') this._startRound()
+    }, 5000)
   }
 
   acknowledgeIntermission(id) {

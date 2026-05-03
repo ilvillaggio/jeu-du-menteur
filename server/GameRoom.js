@@ -684,14 +684,21 @@ class GameRoom {
       const choice = this.choices.get(p.id) || { action: 'cooperer', mise: 10 }
       let delta = 0
 
-      // ===== Payoffs par action =====
-      // Profiter  : +25 garanti, ne participe à rien d'autre
-      // Coopérer  : +50 si TOUT le pacte coopère (pas de traître, pas de profiteur)
-      //             Si ≥ 2 traîtres : le coopérateur RAMASSE le butin (75 × nbTraîtres)
-      //             partagé entre tous les coopérateurs du pacte
+      // ===== Payoffs par action — barème selon la taille du pacte =====
+      // Pacte à 2 (1 partenaire) : Profit 25, Coop 50, Trahir ±100
+      // Pacte à 3 (2 partenaires) : Profit 50, Coop 75, Trahir ±150
+      //
+      // Coopérer  : montant si TOUT le pacte coopère.
+      //             Si ≥ 2 traîtres : la coop rafle leur butin
+      //             (TRAHIR_VAL × nbTraîtres) partagé entre tous les coops.
       //             Sinon : 0
-      // Trahir    : +75 si seul à trahir dans le pacte, sinon -75 (pénalité)
+      // Trahir    : +TRAHIR_VAL si seul, sinon -TRAHIR_VAL (pénalité)
       // Dernière manche : tous les gains/pertes sont doublés
+
+      const pactSize = validPartners.length + 1
+      const PROFIT_VAL = pactSize === 3 ? 50 : 25
+      const COOP_FULL  = pactSize === 3 ? 75 : 50
+      const TRAHIR_VAL = pactSize === 3 ? 150 : 100
 
       // Compteurs d'actions dans le pacte du joueur (inclut le joueur lui-même)
       const pactMembers = [p.id, ...validPartners]
@@ -706,18 +713,19 @@ class GameRoom {
       if (choice.action === 'cooperer') {
         if (nbTrahir === 0 && nbProfit === 0) {
           // Tout le pacte coopère : gain collectif
-          delta = 50
+          delta = COOP_FULL
         } else if (nbTrahir >= 2 && nbCoop > 0) {
           // Au moins 2 traîtres : leur butin est partagé entre les coopérateurs
-          delta = Math.floor((75 * nbTrahir) / nbCoop)
+          // (ex: pacte 3, 2 trahir + 1 coop → coop = 150*2/1 = 300)
+          delta = Math.floor((TRAHIR_VAL * nbTrahir) / nbCoop)
         } else {
-          // Un seul traître (qui empoche +75), ou au moins un profiteur : la coop échoue
+          // Un seul traître (qui empoche), ou au moins un profiteur : la coop échoue
           delta = 0
         }
       } else if (choice.action === 'profiter') {
-        delta = 25
+        delta = PROFIT_VAL
       } else if (choice.action === 'trahir') {
-        delta = nbTrahir === 1 ? 75 : -75
+        delta = nbTrahir === 1 ? TRAHIR_VAL : -TRAHIR_VAL
       }
 
       // Double enjeu à la dernière manche

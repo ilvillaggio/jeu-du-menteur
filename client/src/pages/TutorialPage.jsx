@@ -203,10 +203,10 @@ const SLIDES = [
         >😏</motion.div>
         <h2 className="text-3xl font-bold text-gold-light mb-3">Profiter</h2>
         <div className="bg-gold/10 border-2 border-gold/40 rounded-2xl p-4 mb-3">
-          <p className="text-4xl font-bold text-gold mb-1">+25 pts</p>
-          <p className="text-gold-light text-sm">garantis, à chaque fois</p>
+          <p className="text-3xl font-bold text-gold mb-1">+25 / +50 pts</p>
+          <p className="text-gold-light text-xs">25 en pacte à 2 · 50 en pacte à 3</p>
         </div>
-        <p className="text-muted text-sm">Tu joues seul. Pas de butin partagé, mais aucun risque.</p>
+        <p className="text-muted text-sm">Tu joues seul. Gain garanti, aucun risque.</p>
       </>
     ),
   },
@@ -222,12 +222,13 @@ const SLIDES = [
         >🤝</motion.div>
         <h2 className="text-3xl font-bold text-teal-light mb-3">Coopérer</h2>
         <div className="bg-teal/10 border-2 border-teal/40 rounded-2xl p-4 mb-3">
-          <p className="text-4xl font-bold text-teal mb-1">+50 pts</p>
-          <p className="text-teal-light text-sm">si TOUT le pacte coopère</p>
+          <p className="text-3xl font-bold text-teal mb-1">+50 / +75 pts</p>
+          <p className="text-teal-light text-xs">50 en pacte à 2 · 75 en pacte à 3</p>
+          <p className="text-teal-light/70 text-xs mt-1">si TOUT le pacte coopère</p>
         </div>
         <div className="bg-crimson/10 border border-crimson/30 rounded-xl p-3 text-left">
           <p className="text-crimson-light text-xs font-bold">⚠️ Sinon : 0 pt</p>
-          <p className="text-muted text-xs mt-1">Mais si ≥ 2 traîtres, tu rafles leur butin (75 par traître) !</p>
+          <p className="text-muted text-xs mt-1">Mais si ≥ 2 traîtres, tu rafles tout leur butin (100 ou 150 par traître) !</p>
         </div>
       </>
     ),
@@ -245,15 +246,16 @@ const SLIDES = [
         <h2 className="text-3xl font-bold text-crimson-light mb-3">Trahir</h2>
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-teal/10 border-2 border-teal/40 rounded-xl p-3">
-            <p className="text-2xl font-bold text-teal">+75</p>
+            <p className="text-xl font-bold text-teal">+100 / +150</p>
             <p className="text-teal-light text-[10px] uppercase tracking-widest">Seul traître</p>
           </div>
           <div className="bg-crimson/10 border-2 border-crimson/40 rounded-xl p-3">
-            <p className="text-2xl font-bold text-crimson-light">−75</p>
+            <p className="text-xl font-bold text-crimson-light">−100 / −150</p>
             <p className="text-crimson-light text-[10px] uppercase tracking-widest">Plusieurs traîtres</p>
           </div>
         </div>
-        <p className="text-muted text-xs mt-4 italic">Risqué : si tu n'es pas le seul à trahir, vous vous neutralisez et les coops raflent tout.</p>
+        <p className="text-muted text-[11px] mt-2">100 en pacte à 2 · 150 en pacte à 3</p>
+        <p className="text-muted text-xs mt-3 italic">Risqué : si tu n'es pas le seul à trahir, vous vous neutralisez et les coops raflent tout.</p>
       </>
     ),
   },

@@ -10,16 +10,20 @@ import ScoreboardDrawer from '../components/ScoreboardDrawer'
 import Avatar from '../components/Avatar'
 import PactsLiveView from '../components/PactsLiveView'
 
-// Construit la liste des actions avec payoffs adaptés (×2 à la dernière manche)
-function buildActions(isFinalRound) {
+// Construit la liste des actions avec payoffs adaptés selon la taille du pacte
+// (×2 à la dernière manche). pactSize = 2 ou 3.
+function buildActions(isFinalRound, pactSize) {
   const x = (n) => (isFinalRound ? n * 2 : n)
+  const PROFIT = pactSize === 3 ? 50 : 25
+  const COOP   = pactSize === 3 ? 75 : 50
+  const TRAHIR = pactSize === 3 ? 150 : 100
   return [
     {
       id: 'profiter',
       label: 'Profiter',
       icon: '😏',
       desc: 'Tu joues seul. Gain garanti, sans surprise.',
-      payoff: `+${x(25)}`,
+      payoff: `+${x(PROFIT)}`,
       sub: 'garanti',
       idle: 'border-gold/40 bg-surface',
       active: 'border-gold-light bg-gold/20',
@@ -29,8 +33,8 @@ function buildActions(isFinalRound) {
       label: 'Coopérer',
       icon: '🤝',
       desc: 'Tu joues honnêtement avec tes partenaires.',
-      payoff: `+${x(50)}`,
-      sub: `si TOUT le pacte coopère. Si ≥ 2 trahissent, tu rafles leur butin (${x(75)} par traître).`,
+      payoff: `+${x(COOP)}`,
+      sub: `si TOUT le pacte coopère. Si ≥ 2 trahissent, tu rafles leur butin (${x(TRAHIR)} par traître).`,
       idle: 'border-teal/40 bg-surface',
       active: 'border-teal-light bg-teal/20',
     },
@@ -39,8 +43,8 @@ function buildActions(isFinalRound) {
       label: 'Trahir',
       icon: '🗡️',
       desc: 'Tu retournes contre tes partenaires. Risqué.',
-      payoff: `+${x(75)} / −${x(75)}`,
-      sub: `seul à trahir dans ton pacte, sinon −${x(75)} pour tous les traîtres`,
+      payoff: `+${x(TRAHIR)} / −${x(TRAHIR)}`,
+      sub: `seul à trahir dans ton pacte, sinon −${x(TRAHIR)} pour tous les traîtres`,
       idle: 'border-crimson/40 bg-surface',
       active: 'border-crimson-light bg-crimson/20',
     },
@@ -52,7 +56,6 @@ export default function ChoicePage() {
   const { socket } = useSocket()
 
   const isFinalRound = totalRounds > 0 && round === totalRounds
-  const ACTIONS = buildActions(isFinalRound)
 
   const [action, setAction] = useState(null)
   const [localSubmitted, setLocalSubmitted] = useState(false)
@@ -66,6 +69,8 @@ export default function ChoicePage() {
   const validPartnerPlayers = players.filter((p) => myValidPartners?.includes(p.id))
   const completedMissions = myMissions.filter((m) => m.completed).length
   const hasPact = validPartnerPlayers.length > 0
+  const pactSize = validPartnerPlayers.length + 1  // 2 ou 3
+  const ACTIONS = buildActions(isFinalRound, pactSize)
 
   function pickAction(actionId) {
     setAction(actionId)

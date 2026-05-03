@@ -185,6 +185,9 @@ class GameRoom {
     this.firstVoterThisRound = null
     this._resolvingRound = false
     this.lastRoundResults = null
+    this.teamSelectionPhase = null
+    this.teamSelectionPhaseEndsAt = 0
+    this.whispers = []
     // On retire les bots ajoutés à la partie précédente — ils seront re-créés
     // au prochain game:start selon le playerCount choisi
     this.players = this.players.filter((p) => !p.isBot)
@@ -221,6 +224,9 @@ class GameRoom {
     this.firstVoterThisRound = null
     this._resolvingRound = false
     this.lastRoundResults = null
+    this.teamSelectionPhase = null
+    this.teamSelectionPhaseEndsAt = 0
+    this.whispers = []
     this.players.forEach((p) => {
       p.score = 0
       p.missionScore = 0
@@ -472,6 +478,9 @@ class GameRoom {
     }
 
     this.phase = 'team_reveal'
+    // Reset la sous-phase pour la propreté (ne s'applique qu'à team_selection)
+    this.teamSelectionPhase = null
+    this.teamSelectionPhaseEndsAt = 0
 
     // Reset les ack — on attend un clic explicite pour passer à la phase d'action
     // (plus de timer fixe). Auto-ack pour les bots et les éliminés.

@@ -89,10 +89,10 @@ export default function MissionsDrawer({ open, onClose }) {
                             : 'text-gold'
                         }`}>
                           {m.completed
-                            ? `✓ Réussie · +${m.difficulty === 'hard' ? 75 : 25} pts cachés`
+                            ? `✓ Réussie · +${m.difficulty === 'hard' ? 250 : 100} pts cachés`
                             : m.difficulty === 'hard'
-                            ? '⚡ Difficile · +75 pts'
-                            : '✦ Facile · +25 pts'}
+                            ? '⚡ Difficile · +250 pts'
+                            : '✦ Facile · +100 pts'}
                         </p>
                       </div>
                       {m.completed && (

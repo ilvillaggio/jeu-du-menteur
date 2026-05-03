@@ -285,7 +285,7 @@ const SLIDES = [
             <span className="text-3xl shrink-0">📜</span>
             <div>
               <p className="text-gold-light font-bold text-sm">2 missions secrètes</p>
-              <p className="text-muted text-xs">Bonus de +25 et +75 si tu les complètes (révélés à la fin).</p>
+              <p className="text-muted text-xs">Bonus de +100 et +250 si tu les complètes (révélés à la fin).</p>
             </div>
           </motion.div>
           <motion.div

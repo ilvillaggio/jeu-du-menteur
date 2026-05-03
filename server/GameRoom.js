@@ -986,8 +986,9 @@ class GameRoom {
         }
 
         // Si la mission vient d'être complétée, ajoute ses points au missionScore privé
+        // Easy = 100 pts, Hard = 250 pts
         if (m.completed) {
-          p.missionScore += (m.difficulty === 'hard' ? 75 : 25)
+          p.missionScore += (m.difficulty === 'hard' ? 250 : 100)
         }
       })
     })

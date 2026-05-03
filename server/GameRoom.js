@@ -908,8 +908,8 @@ class GameRoom {
             }
             break
           }
-          case 'h2': { // Remporte plus de 100 pts en une seule manche
-            if (lastEntry.delta > 100) m.completed = true
+          case 'h2': { // Remporte plus de 200 pts en une seule manche
+            if (lastEntry.delta > 200) m.completed = true
             break
           }
           case 'h3': { // Trahis un partenaire qui a voulu coopérer
@@ -930,8 +930,8 @@ class GameRoom {
             }
             break
           }
-          case 'h5': { // Atteins au moins 80 points avant la manche 3
-            if (this.round <= 2 && p.score >= 80) m.completed = true
+          case 'h5': { // Atteins au moins 200 points avant la manche 3
+            if (this.round <= 2 && p.score >= 200) m.completed = true
             break
           }
           case 'h7': { // Finis dans le top 3 final

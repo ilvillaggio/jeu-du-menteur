@@ -16,10 +16,10 @@ module.exports = [
   { id: 'e11', description: "Réussis un pacte à 2 alors qu'un autre joueur vous voulait à 3.", difficulty: 'easy', completed: false },
 
   // Hard
-  { id: 'h2',  description: "Remporte plus de 100 pts en une seule manche.", difficulty: 'hard', completed: false },
+  { id: 'h2',  description: "Remporte plus de 200 pts en une seule manche.", difficulty: 'hard', completed: false },
   { id: 'h3',  description: "Trahis un partenaire qui a voulu coopérer.", difficulty: 'hard', completed: false },
   { id: 'h4',  description: "Termine la partie avec exactement 0 trahisons.", difficulty: 'hard', completed: false },
-  { id: 'h5',  description: "Atteins au moins 80 points avant la manche 3.", difficulty: 'hard', completed: false },
+  { id: 'h5',  description: "Atteins au moins 200 points avant la manche 3.", difficulty: 'hard', completed: false },
   { id: 'h7',  description: "Finis dans le top 3 final.", difficulty: 'hard', completed: false },
   { id: 'h8',  description: "Profite lors de trois manches différentes.", difficulty: 'hard', completed: false },
   { id: 'h9',  description: "Trahis avec succès lors de la dernière manche.", difficulty: 'hard', completed: false },

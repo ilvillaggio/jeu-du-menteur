@@ -87,7 +87,10 @@ export default function TeamSelectionPage() {
         <div>
           <p className="text-muted text-xs uppercase tracking-widest">Manche {round} · Étape 1/2</p>
           <h2 className="text-2xl font-bold text-white leading-tight">Choisis ton équipe</h2>
-          <p className="text-muted text-xs mt-1">1 partenaire = pacte à 2 · 2 partenaires = pacte à 3</p>
+          <p className="text-muted text-xs mt-1 leading-relaxed">
+            1 partenaire = pacte à 2<br />
+            2 partenaires = pacte à 3
+          </p>
         </div>
         <div className="flex items-center gap-1">
           <MessagesIconButton onClick={() => setWhispersOpen(true)} />
@@ -166,10 +169,9 @@ export default function TeamSelectionPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => toggle(p.id)}
-                    disabled={wasPartner}
                     className={`flex items-center gap-3 px-4 py-4 rounded-2xl border-2 touch-manipulation transition-colors min-h-[68px] ${
                       wasPartner
-                        ? 'border-border bg-surface/40 opacity-30 cursor-not-allowed'
+                        ? 'border-border bg-surface/40 opacity-50 cursor-not-allowed'
                         : selected.includes(p.id)
                           ? 'border-gold bg-gold/10 text-white'
                           : isOffline
@@ -199,20 +201,19 @@ export default function TeamSelectionPage() {
                     {selected.includes(p.id) && !wasPartner && (
                       <span className="text-gold text-xl">✓</span>
                     )}
-                    {/* Bouton chat privé : tap court ouvre la conversation
-                        directement avec ce joueur (stop propagation pour ne
-                        pas déclencher la sélection en même temps) */}
-                    {!wasPartner && (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => { e.stopPropagation(); openWhisperWith(p.id) }}
-                        className="ml-1 w-9 h-9 flex items-center justify-center rounded-xl bg-noir/40 text-lg active:scale-95 touch-manipulation"
-                        title={`Message privé à ${p.name}`}
-                      >
-                        💬
-                      </span>
-                    )}
+                    {/* Bouton chat privé : toujours actif (même pour les
+                        anciens partenaires), pour pouvoir continuer à
+                        négocier ou se concerter en privé */}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); openWhisperWith(p.id) }}
+                      className="ml-1 w-9 h-9 flex items-center justify-center rounded-xl bg-noir/40 text-lg active:scale-95 touch-manipulation opacity-100"
+                      style={{ opacity: 1 }}
+                      title={`Message privé à ${p.name}`}
+                    >
+                      💬
+                    </span>
                   </motion.button>
                 )
               })}

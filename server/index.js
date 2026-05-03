@@ -87,6 +87,10 @@ io.on('connection', (socket) => {
       myMissionScore: res.player.missionScore,
       myHistory: room._historyForPlayer(res.player),
       playerId: socket.id,
+      // Restaure les whispers où ce joueur est sender ou destinataire
+      whispers: (room.whispers || []).filter(
+        (w) => w.from === res.player.id || w.to === res.player.id
+      ),
     }
 
     // Phases qui nécessitent des données spécifiques pour ne pas afficher
@@ -283,6 +287,10 @@ io.on('connection', (socket) => {
       text: trimmed,
       at: Date.now(),
     }
+
+    // Stocke côté serveur pour que les messages survivent à une déconnexion
+    room.whispers = room.whispers || []
+    room.whispers.push(whisper)
 
     // Transmission au destinataire (les bots n'ont pas de socket, ignoré)
     if (!recipient.isBot) {

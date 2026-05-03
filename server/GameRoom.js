@@ -43,6 +43,7 @@ class GameRoom {
     this.previousPartners = new Map() // playerId → [partnerId, ...] du round précédent
     this.teamSelectionPhase = null    // 'discussion' (1 min, sélections bloquées) | 'validation' (1 min max, sélections autorisées)
     this.teamSelectionPhaseEndsAt = 0 // timestamp Unix de fin de la sous-phase courante
+    this.whispers = []                // historique des messages privés (persistent à la déco)
     this.playerHistory = new Map() // playerId → [{ round, action, mise, partners, delta }]
     this.firstVoterThisRound = null
   }
@@ -118,6 +119,14 @@ class GameRoom {
         partners:  remap(h.partners),
         chosenIds: remap(h.chosenIds),
       })))
+    }
+    // Remap les whispers (les ids from/to du joueur reconnecté changent)
+    if (this.whispers && this.whispers.length > 0) {
+      this.whispers = this.whispers.map((w) => ({
+        ...w,
+        from: w.from === oldId ? socket.id : w.from,
+        to:   w.to   === oldId ? socket.id : w.to,
+      }))
     }
 
     return { ok: true, player: p }
